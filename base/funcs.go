@@ -138,3 +138,8 @@ func (bot *BotAPI) Request(c tgbotapi.Chattable) error {
 	_, err := bot.internal.Request(c)
 	return err
 }
+
+// Send is an even simpler wrapper around [tgbotapi.BotAPI.Send].
+func (bot *BotAPI) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
+	return bot.internal.Send(c)
+}

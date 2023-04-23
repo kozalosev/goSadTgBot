@@ -59,6 +59,8 @@ type ExtendedBotAPI interface {
 	ReplyWithInlineKeyboard(msg *tgbotapi.Message, text string, buttons []tgbotapi.InlineKeyboardButton)
 	// Request is the most common method that can be used to send any request to Telegram.
 	Request(tgbotapi.Chattable) error
+	// Send is like the Request method but returns the sent message back with non-empty ID field.
+	Send(tgbotapi.Chattable) (tgbotapi.Message, error)
 }
 
 type CommandHandlerTrait struct {

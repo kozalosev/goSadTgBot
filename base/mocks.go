@@ -45,6 +45,12 @@ func (bot *FakeBotAPI) Request(c tgbotapi.Chattable) error {
 	return nil
 }
 
+func (bot *FakeBotAPI) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
+	bot.callType = request
+	bot.sentRequests = append(bot.sentRequests, c)
+	return tgbotapi.Message{}, nil
+}
+
 // GetOutput returns either a string after usage of Reply*() methods or a [tgbotapi.Chattable] after Request()
 func (bot *FakeBotAPI) GetOutput() interface{} {
 	switch bot.callType {
