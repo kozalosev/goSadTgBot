@@ -86,5 +86,5 @@ type RequestEnv struct {
 	// Lang is a localization container. You can get a message in the user's language by key, using its [loc.Context.Tr] method.
 	Lang *loc.Context
 	// Options is a container for user options fetched from the database.
-	Options *settings.UserOptions
+	Options settings.UserOptions
 }

@@ -39,7 +39,7 @@ func ConvertHandlersToCommands(handlers []MessageHandler) []CommandHandler {
 	return commands
 }
 
-func NewRequestEnv(langCtx *loc.Context, opts *settings.UserOptions) *RequestEnv {
+func NewRequestEnv(langCtx *loc.Context, opts settings.UserOptions) *RequestEnv {
 	return &RequestEnv{
 		Lang:    langCtx,
 		Options: opts,
