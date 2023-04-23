@@ -16,7 +16,7 @@ const (
 	ExposedDBPort = "5432"
 )
 
-func TestConnectToDatabase(t *testing.T) {
+func TestConnectToDatabaseAndRunMigrations(t *testing.T) {
 	ctx := context.Background()
 	req := testcontainers.ContainerRequest{
 		Name:         "goSadTgBot-StorageTest-Postgres",
@@ -46,4 +46,6 @@ func TestConnectToDatabase(t *testing.T) {
 	dbConfig := NewDatabaseConfig(host, port, TestUser, TestPassword, TestDB)
 	db := ConnectToDatabase(ctx, dbConfig)
 	db.Close()
+
+	RunMigrations(dbConfig, "")
 }

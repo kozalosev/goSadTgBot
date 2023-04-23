@@ -1,3 +1,4 @@
+// Package storage creates a database connection and runs the migrations located in the `db/migrations` directory.
 package storage
 
 import (
@@ -54,7 +55,10 @@ func ConnectToDatabase(ctx context.Context, config *DatabaseConfig) *pgxpool.Poo
 	}
 
 	if err := conn.Ping(ctx); err != nil {
-		panic(err)
+		log.WithField(logconst.FieldFunc, "ConnectToDatabase").
+			WithField(logconst.FieldCalledObject, "Pool").
+			WithField(logconst.FieldCalledMethod, "Ping").
+			Fatal(err)
 	}
 	return conn
 }
