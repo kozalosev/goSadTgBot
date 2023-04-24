@@ -16,7 +16,7 @@ const (
 	ExposedDBPort = "5432"
 )
 
-func TestConnectToDatabaseAndRunMigrations(t *testing.T) {
+func TestEverything(t *testing.T) {
 	ctx := context.Background()
 	req := testcontainers.ContainerRequest{
 		Name:         "goSadTgBot-StorageTest-Postgres",
@@ -45,7 +45,13 @@ func TestConnectToDatabaseAndRunMigrations(t *testing.T) {
 
 	dbConfig := NewDatabaseConfig(host, port, TestUser, TestPassword, TestDB)
 	db := ConnectToDatabase(ctx, dbConfig)
-	db.Close()
+	defer db.Close()
 
 	RunMigrations(dbConfig, "")
+
+	_, err = db.Exec(ctx, "INSERT INTO test VALUES (1)")
+	assert.True(t, DuplicateConstraintViolation(err))
+
+	_, err = db.Exec(ctx, "INSERT INTO test2 VALUES (1)")
+	assert.False(t, DuplicateConstraintViolation(err))
 }

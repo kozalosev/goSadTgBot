@@ -3,11 +3,13 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/golang-migrate/migrate/v4/source/github"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kozalosev/goSadTgBot/logconst"
 	log "github.com/sirupsen/logrus"
@@ -15,7 +17,10 @@ import (
 	"strconv"
 )
 
-const migrationsPath = "db/migrations"
+const (
+	migrationsPath             = "db/migrations"
+	duplicateConstraintSQLCode = "23505"
+)
 
 type DatabaseConfig struct {
 	host     string
@@ -92,4 +97,11 @@ func RunMigrations(config *DatabaseConfig, migrationsRepo string) {
 			WithField(logconst.FieldCalledMethod, "Up").
 			Fatal(err)
 	}
+}
+
+// DuplicateConstraintViolation returns true if the errors represents a duplicate constraint violation (SQLSTATE 23505)
+// occurred in the database.
+func DuplicateConstraintViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == duplicateConstraintSQLCode
 }
