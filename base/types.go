@@ -61,6 +61,8 @@ type ExtendedBotAPI interface {
 	Request(tgbotapi.Chattable) error
 	// Send is like the Request method but returns the sent message back with non-empty ID field.
 	Send(tgbotapi.Chattable) (tgbotapi.Message, error)
+	// GetStandardAPI lets you use all standard methods of the library.
+	GetStandardAPI() *tgbotapi.BotAPI
 }
 
 type CommandHandlerTrait struct {

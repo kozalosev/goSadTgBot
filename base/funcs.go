@@ -143,3 +143,7 @@ func (bot *BotAPI) Request(c tgbotapi.Chattable) error {
 func (bot *BotAPI) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
 	return bot.internal.Send(c)
 }
+
+func (bot *BotAPI) GetStandardAPI() *tgbotapi.BotAPI {
+	return bot.internal
+}
