@@ -39,6 +39,17 @@ func ConvertHandlersToCommands(handlers []MessageHandler) []CommandHandler {
 	return commands
 }
 
+// NewReplier is a shortcut to reply with text in the user's language.
+// Example:
+//
+//	reply := base.NewReplier(handler.appenv, reqenv, msg)
+//	reply("messages.success")
+func NewReplier(appenv *ApplicationEnv, reqenv *RequestEnv, msg *tgbotapi.Message) func(string) {
+	return func(statusKey string) {
+		appenv.Bot.Reply(msg, reqenv.Lang.Tr(statusKey))
+	}
+}
+
 func NewRequestEnv(langCtx *loc.Context, opts settings.UserOptions) *RequestEnv {
 	return &RequestEnv{
 		Lang:    langCtx,
