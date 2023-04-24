@@ -26,3 +26,13 @@ func (s SkipOnFieldValue) ShouldBeSkipped(form *Form) bool {
 	}
 	return f.Data == s.Value
 }
+
+// SkipIfFiledNotEmpty is another [SkipCondition] implementation which gives a way to express the intention to fill
+// one of two fields but not both.
+type SkipIfFiledNotEmpty struct {
+	Name string
+}
+
+func (s SkipIfFiledNotEmpty) ShouldBeSkipped(form *Form) bool {
+	return form.Fields.FindField(s.Name).Data != nil
+}
