@@ -15,6 +15,9 @@ type MessageHandler interface {
 	Handle(reqenv *RequestEnv, msg *tgbotapi.Message)
 }
 
+// CommandHandler is a MessageHandler which is considered as a public command that will be registered automatically.
+// https://core.telegram.org/bots/api#setmycommands
+// Inject [CommandHandlerTrait] to get the default implementation of CanHandle().
 type CommandHandler interface {
 	MessageHandler
 
