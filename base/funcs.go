@@ -57,7 +57,7 @@ func NewRequestEnv(langCtx *loc.Context, opts settings.UserOptions) *RequestEnv 
 	}
 }
 
-func (t CommandHandlerTrait) CanHandle(msg *tgbotapi.Message) bool {
+func (t CommandHandlerTrait) CanHandle(_ *RequestEnv, msg *tgbotapi.Message) bool {
 	return slices.Contains(t.HandlerRefForTrait.GetCommands(), msg.Command())
 }
 

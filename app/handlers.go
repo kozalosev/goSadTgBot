@@ -50,7 +50,7 @@ func processMessage(appParams *Params, msg *tgbotapi.Message) {
 
 	// for commands and other handlers
 	for _, handler := range appParams.MessageHandlers {
-		if handler.CanHandle(msg) {
+		if handler.CanHandle(reqenv, msg) {
 			metrics.IncMessageHandlerCounter(handler)
 			handler.Handle(reqenv, msg)
 			return
@@ -88,7 +88,7 @@ func processInline(appParams *Params, query *tgbotapi.InlineQuery) {
 	reqenv := base.NewRequestEnv(lc, opts)
 
 	for _, handler := range appParams.InlineHandlers {
-		if handler.CanHandle(query) {
+		if handler.CanHandle(reqenv, query) {
 			metrics.IncInlineHandlerCounter(handler)
 			handler.Handle(reqenv, query)
 			return

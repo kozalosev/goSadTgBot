@@ -11,7 +11,7 @@ import (
 
 // MessageHandler is a handler for the [tgbotapi.Message] update type.
 type MessageHandler interface {
-	CanHandle(msg *tgbotapi.Message) bool
+	CanHandle(reqenv *RequestEnv, msg *tgbotapi.Message) bool
 	Handle(reqenv *RequestEnv, msg *tgbotapi.Message)
 }
 
@@ -23,7 +23,7 @@ type CommandHandler interface {
 
 // InlineHandler is a handler for the [tgbotapi.InlineQuery] update type.
 type InlineHandler interface {
-	CanHandle(query *tgbotapi.InlineQuery) bool
+	CanHandle(reqenv *RequestEnv, query *tgbotapi.InlineQuery) bool
 	Handle(reqenv *RequestEnv, query *tgbotapi.InlineQuery)
 }
 

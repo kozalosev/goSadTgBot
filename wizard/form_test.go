@@ -105,9 +105,9 @@ func tAction(_ *base.RequestEnv, _ *tgbotapi.Message, fields Fields) {
 
 type testHandler struct{}
 
-func (testHandler) CanHandle(*tgbotapi.Message) bool           { return false }
-func (testHandler) Handle(*base.RequestEnv, *tgbotapi.Message) {}
-func (testHandler) GetWizardAction() FormAction                { return tAction }
+func (testHandler) CanHandle(*base.RequestEnv, *tgbotapi.Message) bool { return false }
+func (testHandler) Handle(*base.RequestEnv, *tgbotapi.Message)         {}
+func (testHandler) GetWizardAction() FormAction                        { return tAction }
 
 func (testHandler) GetWizardEnv() *Env {
 	return NewEnv(&base.ApplicationEnv{
