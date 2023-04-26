@@ -11,10 +11,13 @@ import (
 
 // MessageHandler is a handler for the [tgbotapi.Message] update type.
 type MessageHandler interface {
-	CanHandle(msg *tgbotapi.Message) bool
+	CanHandle(reqenv *RequestEnv, msg *tgbotapi.Message) bool
 	Handle(reqenv *RequestEnv, msg *tgbotapi.Message)
 }
 
+// CommandHandler is a MessageHandler which is considered as a public command that will be registered automatically.
+// https://core.telegram.org/bots/api#setmycommands
+// Inject [CommandHandlerTrait] to get the default implementation of CanHandle().
 type CommandHandler interface {
 	MessageHandler
 
@@ -23,7 +26,7 @@ type CommandHandler interface {
 
 // InlineHandler is a handler for the [tgbotapi.InlineQuery] update type.
 type InlineHandler interface {
-	CanHandle(query *tgbotapi.InlineQuery) bool
+	CanHandle(reqenv *RequestEnv, query *tgbotapi.InlineQuery) bool
 	Handle(reqenv *RequestEnv, query *tgbotapi.InlineQuery)
 }
 
@@ -59,6 +62,10 @@ type ExtendedBotAPI interface {
 	ReplyWithInlineKeyboard(msg *tgbotapi.Message, text string, buttons []tgbotapi.InlineKeyboardButton)
 	// Request is the most common method that can be used to send any request to Telegram.
 	Request(tgbotapi.Chattable) error
+	// Send is like the Request method but returns the sent message back with non-empty ID field.
+	Send(tgbotapi.Chattable) (tgbotapi.Message, error)
+	// GetStandardAPI lets you use all standard methods of the library.
+	GetStandardAPI() *tgbotapi.BotAPI
 }
 
 type CommandHandlerTrait struct {

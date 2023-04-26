@@ -39,6 +39,17 @@ func ConvertHandlersToCommands(handlers []MessageHandler) []CommandHandler {
 	return commands
 }
 
+// NewReplier is a shortcut to reply with text in the user's language.
+// Example:
+//
+//	reply := base.NewReplier(handler.appenv, reqenv, msg)
+//	reply("messages.success")
+func NewReplier(appenv *ApplicationEnv, reqenv *RequestEnv, msg *tgbotapi.Message) func(string) {
+	return func(statusKey string) {
+		appenv.Bot.Reply(msg, reqenv.Lang.Tr(statusKey))
+	}
+}
+
 func NewRequestEnv(langCtx *loc.Context, opts settings.UserOptions) *RequestEnv {
 	return &RequestEnv{
 		Lang:    langCtx,
@@ -46,7 +57,7 @@ func NewRequestEnv(langCtx *loc.Context, opts settings.UserOptions) *RequestEnv 
 	}
 }
 
-func (t CommandHandlerTrait) CanHandle(msg *tgbotapi.Message) bool {
+func (t CommandHandlerTrait) CanHandle(_ *RequestEnv, msg *tgbotapi.Message) bool {
 	return slices.Contains(t.HandlerRefForTrait.GetCommands(), msg.Command())
 }
 
@@ -137,4 +148,13 @@ func (bot *BotAPI) ReplyWithInlineKeyboard(msg *tgbotapi.Message, text string, b
 func (bot *BotAPI) Request(c tgbotapi.Chattable) error {
 	_, err := bot.internal.Request(c)
 	return err
+}
+
+// Send is an even simpler wrapper around [tgbotapi.BotAPI.Send].
+func (bot *BotAPI) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
+	return bot.internal.Send(c)
+}
+
+func (bot *BotAPI) GetStandardAPI() *tgbotapi.BotAPI {
+	return bot.internal
 }

@@ -57,7 +57,7 @@ func TestForm_ProcessNextField(t *testing.T) {
 	}
 
 	actionFlagCont := &flagContainer{}
-	handler := testHandlerWithAction{stateStorage: fakeStorage{}, actionWasRunFlag: actionFlagCont}
+	handler := testHandlerWithAction{stateStorage: FakeStorage{}, actionWasRunFlag: actionFlagCont}
 	clearRegisteredDescriptors()
 	PopulateWizardDescriptors([]base.MessageHandler{handler})
 
@@ -105,9 +105,9 @@ func tAction(_ *base.RequestEnv, _ *tgbotapi.Message, fields Fields) {
 
 type testHandler struct{}
 
-func (testHandler) CanHandle(*tgbotapi.Message) bool           { return false }
-func (testHandler) Handle(*base.RequestEnv, *tgbotapi.Message) {}
-func (testHandler) GetWizardAction() FormAction                { return tAction }
+func (testHandler) CanHandle(*base.RequestEnv, *tgbotapi.Message) bool { return false }
+func (testHandler) Handle(*base.RequestEnv, *tgbotapi.Message)         {}
+func (testHandler) GetWizardAction() FormAction                        { return tAction }
 
 func (testHandler) GetWizardEnv() *Env {
 	return NewEnv(&base.ApplicationEnv{
@@ -162,10 +162,3 @@ func (handler testHandlerWithAction) GetWizardEnv() *Env {
 		Ctx: ctx,
 	}, handler.stateStorage)
 }
-
-type fakeStorage struct{}
-
-func (fakeStorage) GetCurrentState(int64, Wizard) error { return nil }
-func (fakeStorage) SaveState(int64, Wizard) error       { return nil }
-func (fakeStorage) DeleteState(int64) error             { return nil }
-func (fakeStorage) Close() error                        { return nil }

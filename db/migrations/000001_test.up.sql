@@ -1,0 +1,2 @@
+CREATE TABLE test (id serial PRIMARY KEY);
+INSERT INTO test VALUES (1);
