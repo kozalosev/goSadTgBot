@@ -57,7 +57,7 @@ func TestForm_ProcessNextField(t *testing.T) {
 	}
 
 	actionFlagCont := &flagContainer{}
-	handler := testHandlerWithAction{stateStorage: fakeStorage{}, actionWasRunFlag: actionFlagCont}
+	handler := testHandlerWithAction{stateStorage: FakeStorage{}, actionWasRunFlag: actionFlagCont}
 	clearRegisteredDescriptors()
 	PopulateWizardDescriptors([]base.MessageHandler{handler})
 
@@ -162,10 +162,3 @@ func (handler testHandlerWithAction) GetWizardEnv() *Env {
 		Ctx: ctx,
 	}, handler.stateStorage)
 }
-
-type fakeStorage struct{}
-
-func (fakeStorage) GetCurrentState(int64, Wizard) error { return nil }
-func (fakeStorage) SaveState(int64, Wizard) error       { return nil }
-func (fakeStorage) DeleteState(int64) error             { return nil }
-func (fakeStorage) Close() error                        { return nil }
