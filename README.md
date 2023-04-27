@@ -21,8 +21,14 @@ Packages
 Examples of usage
 -----------------
 * [SadFavBot][SadFavBot-repo] ([main.go][SadFavBot-main], [@bot][SadFavBot-bot])
+* [PostSuggesterBot][PostSuggesterBot-repo] ([main.go][PostSuggesterBot-main], [@WellOfDesiresBot][WellOfDesiresBot])
 
 [setWebhook]: https://core.telegram.org/bots/api#setwebhook
+
 [SadFavBot-repo]: https://github.com/kozalosev/SadFavBot
 [SadFavBot-main]: https://github.com/kozalosev/SadFavBot/blob/main/main.go
 [SadFavBot-bot]: https://t.me/SadFavBot
+
+[PostSuggesterBot-repo]: https://github.com/kozalosev/PostSuggesterBot
+[PostSuggesterBot-main]: https://github.com/kozalosev/PostSuggesterBot/blob/main/main.go
+[WellOfDesiresBot]: https://t.me/WellOfDesiresBot
