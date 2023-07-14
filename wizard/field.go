@@ -31,6 +31,7 @@ const (
 	VideoNote FieldType = "video_note"
 	Gif       FieldType = "gif"
 	Document  FieldType = "document"
+	Location  FieldType = "location"
 )
 
 type Field struct {

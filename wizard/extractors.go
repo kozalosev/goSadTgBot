@@ -15,6 +15,13 @@ type File struct {
 	UniqueID string // file_unique_id
 }
 
+// LocData represents a point on the map.
+// https://core.telegram.org/bots/api#location
+type LocData struct {
+	Latitude  float64
+	Longitude float64
+}
+
 func nilExtractor(*tgbotapi.Message) interface{}    { return nil }
 func textExtractor(m *tgbotapi.Message) interface{} { return m.Text }
 func stickerExtractor(m *tgbotapi.Message) interface{} {
@@ -66,6 +73,12 @@ func imageExtractor(m *tgbotapi.Message) interface{} {
 	photo := m.Photo[len(m.Photo)-1]
 	return File{ID: photo.FileID, UniqueID: photo.FileUniqueID}
 }
+func locationExtractor(m *tgbotapi.Message) interface{} {
+	if m.Location == nil {
+		return nil
+	}
+	return LocData{Latitude: m.Location.Latitude, Longitude: m.Location.Longitude}
+}
 
 func determineMessageType(msg *tgbotapi.Message) FieldType {
 	if msg.Sticker != nil {
@@ -91,6 +104,9 @@ func determineMessageType(msg *tgbotapi.Message) FieldType {
 	}
 	if msg.Document != nil {
 		return Document
+	}
+	if msg.Location != nil {
+		return Location
 	}
 	return Text
 }
@@ -122,6 +138,8 @@ func (f *Field) restoreExtractor(msg *tgbotapi.Message) {
 		f.extractor = gifExtractor
 	case Document:
 		f.extractor = documentExtractor
+	case Location:
+		f.extractor = locationExtractor
 	default:
 		log.WithField(logconst.FieldObject, "Field").
 			WithField(logconst.FieldCalledMethod, "restoreExtractor").
