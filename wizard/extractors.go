@@ -13,6 +13,7 @@ type fieldExtractor func(msg *tgbotapi.Message) interface{}
 type File struct {
 	ID       string // file_id
 	UniqueID string // file_unique_id
+	Caption  string // optional, not for all types
 }
 
 // LocData represents a point on the map.
@@ -34,19 +35,19 @@ func voiceExtractor(m *tgbotapi.Message) interface{} {
 	if m.Voice == nil {
 		return nil
 	}
-	return File{ID: m.Voice.FileID, UniqueID: m.Voice.FileUniqueID}
+	return File{ID: m.Voice.FileID, UniqueID: m.Voice.FileUniqueID, Caption: m.Caption}
 }
 func audioExtractor(m *tgbotapi.Message) interface{} {
 	if m.Audio == nil {
 		return nil
 	}
-	return File{ID: m.Audio.FileID, UniqueID: m.Audio.FileUniqueID}
+	return File{ID: m.Audio.FileID, UniqueID: m.Audio.FileUniqueID, Caption: m.Caption}
 }
 func videoExtractor(m *tgbotapi.Message) interface{} {
 	if m.Video == nil {
 		return nil
 	}
-	return File{ID: m.Video.FileID, UniqueID: m.Video.FileUniqueID}
+	return File{ID: m.Video.FileID, UniqueID: m.Video.FileUniqueID, Caption: m.Caption}
 }
 func videoNoteExtractor(m *tgbotapi.Message) interface{} {
 	if m.VideoNote == nil {
@@ -58,20 +59,20 @@ func gifExtractor(m *tgbotapi.Message) interface{} {
 	if m.Animation == nil {
 		return nil
 	}
-	return File{ID: m.Animation.FileID, UniqueID: m.Animation.FileUniqueID}
+	return File{ID: m.Animation.FileID, UniqueID: m.Animation.FileUniqueID, Caption: m.Caption}
 }
 func documentExtractor(m *tgbotapi.Message) interface{} {
 	if m.Document == nil {
 		return nil
 	}
-	return File{ID: m.Document.FileID, UniqueID: m.Document.FileUniqueID}
+	return File{ID: m.Document.FileID, UniqueID: m.Document.FileUniqueID, Caption: m.Caption}
 }
 func imageExtractor(m *tgbotapi.Message) interface{} {
 	if m.Photo == nil || len(m.Photo) == 0 {
 		return nil
 	}
 	photo := m.Photo[len(m.Photo)-1]
-	return File{ID: photo.FileID, UniqueID: photo.FileUniqueID}
+	return File{ID: photo.FileID, UniqueID: photo.FileUniqueID, Caption: m.Caption}
 }
 func locationExtractor(m *tgbotapi.Message) interface{} {
 	if m.Location == nil {
