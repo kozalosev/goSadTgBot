@@ -34,7 +34,7 @@ func CallbackQueryHandler(reqenv *base.RequestEnv, query *tgbotapi.CallbackQuery
 			fieldName := dataArr[0]
 			fieldValue = dataArr[1]
 			field := form.Fields.FindField(fieldName)
-			field.Data = fieldValue
+			field.Data = Txt{Value: fieldValue}
 			err = resources.stateStorage.SaveState(id, &form)
 		} else {
 			err = errors.New(fmt.Sprintf("CallbackQuery data has %d fields unexpectedly!", dataArrLen))
@@ -55,6 +55,7 @@ func CallbackQueryHandler(reqenv *base.RequestEnv, query *tgbotapi.CallbackQuery
 
 		msg := query.Message.ReplyToMessage
 		form.PopulateRestored(msg, resources)
+		form.FixDataTypes()
 		form.ProcessNextField(reqenv, msg)
 	}
 	if err := resources.appEnv.Bot.Request(c); err != nil {

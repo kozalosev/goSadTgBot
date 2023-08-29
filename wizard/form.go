@@ -44,7 +44,14 @@ func (form *Form) AddEmptyField(name string, fieldType FieldType) {
 }
 
 func (form *Form) AddPrefilledField(name string, value interface{}) {
+	valStr, isValStr := value.(string)
+	if isValStr {
+		value = Txt{Value: valStr}
+	}
 	field := &Field{Name: name, Data: value, Form: form}
+	if isValStr {
+		field.Type = Text
+	}
 	form.Fields = append(form.Fields, field)
 }
 
@@ -104,6 +111,20 @@ func (form *Form) PopulateRestored(msg *tgbotapi.Message, resources *Env) {
 	for _, field := range form.Fields {
 		field.Form = form
 		field.descriptor = form.descriptor.findFieldDescriptor(field.Name)
+	}
+}
+
+func (form *Form) FixDataTypes() {
+	for _, field := range form.Fields {
+		if field.Type == Text {
+			if data, ok := field.Data.(map[string]interface{}); ok {
+				if value, ok := data["Value"]; ok {
+					if value, ok := value.(string); ok {
+						field.Data = Txt{Value: value}
+					}
+				}
+			}
+		}
 	}
 }
 

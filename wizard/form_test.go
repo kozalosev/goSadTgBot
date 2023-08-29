@@ -29,8 +29,8 @@ func TestForm_AddPrefilledField(t *testing.T) {
 	resField := form.Fields[0]
 
 	assert.Equal(t, TestName, resField.Name)
-	assert.Equal(t, TestValue, resField.Data)
-	assert.Empty(t, resField.Type)
+	assert.Equal(t, Txt{Value: TestValue}, resField.Data)
+	assert.Equal(t, Text, resField.Type)
 }
 
 func TestRestorationOfFunctions(t *testing.T) {
@@ -69,7 +69,7 @@ func TestForm_ProcessNextField(t *testing.T) {
 
 	assert.Equal(t, 0, form.Index)
 	assert.False(t, form.Fields[0].WasRequested)
-	assert.Equal(t, TestValue, form.Fields[0].Data)
+	assert.Equal(t, Txt{Value: TestValue}, form.Fields[0].Data)
 	assert.False(t, form.Fields[1].WasRequested)
 	assert.False(t, actionFlagCont.flag)
 
@@ -92,7 +92,7 @@ func TestForm_ProcessNextField(t *testing.T) {
 	form.ProcessNextField(reqenv, msg)
 
 	assert.Equal(t, 3, form.Index)
-	assert.Equal(t, TestValue, form.Fields[1].Data)
+	assert.Equal(t, Txt{Value: TestValue}, form.Fields[1].Data)
 	assert.True(t, actionFlagCont.flag)
 }
 

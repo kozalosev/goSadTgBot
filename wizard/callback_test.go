@@ -54,7 +54,7 @@ func TestCallbackQueryHandler(t *testing.T) {
 	assert.Equal(t, 1, form.Index)
 	assert.False(t, form.Fields[0].WasRequested)
 	assert.True(t, form.Fields[1].WasRequested)
-	assert.Equal(t, TestValue, form.Fields[0].Data)
+	assert.Equal(t, Txt{Value: TestValue}, form.Fields[0].Data)
 	assert.Nil(t, form.Fields[1].Data)
 	assert.False(t, actionFlagCont.flag)
 
@@ -63,7 +63,7 @@ func TestCallbackQueryHandler(t *testing.T) {
 	_ = storage.GetCurrentState(TestID, form)
 
 	assert.Equal(t, 2, form.Index)
-	assert.Equal(t, TestValue, form.Fields[1].Data)
+	assert.Equal(t, Txt{Value: TestValue}, form.Fields[1].Data)
 	assert.True(t, actionFlagCont.flag)
 }
 

@@ -24,7 +24,8 @@ func (s SkipOnFieldValue) ShouldBeSkipped(form *Form) bool {
 			Warningf("Field '%s' was not found to check if '%s' should be skipped!", s.Name, form.Fields[form.Index].Name)
 		return false
 	}
-	return f.Data == s.Value
+	txtData, ok := f.Data.(Txt)
+	return ok && txtData.Value == s.Value
 }
 
 // SkipIfFiledNotEmpty is another [SkipCondition] implementation which gives a way to express the intention to fill
