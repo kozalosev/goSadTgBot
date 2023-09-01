@@ -114,6 +114,9 @@ func (form *Form) PopulateRestored(msg *tgbotapi.Message, resources *Env) {
 	}
 }
 
+// FixDataTypes is mandatory for now to cast prefilled Data (Txt) and restored from Redis
+// (map[string]interface{}) to the unified Txt type.
+// Call it before or after PopulateRestored().
 func (form *Form) FixDataTypes() {
 	for _, field := range form.Fields {
 		if field.Type == Text {
