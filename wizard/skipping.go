@@ -24,15 +24,16 @@ func (s SkipOnFieldValue) ShouldBeSkipped(form *Form) bool {
 			Warningf("Field '%s' was not found to check if '%s' should be skipped!", s.Name, form.Fields[form.Index].Name)
 		return false
 	}
-	return f.Data == s.Value
+	txtData, ok := f.Data.(Txt)
+	return ok && txtData.Value == s.Value
 }
 
-// SkipIfFiledNotEmpty is another [SkipCondition] implementation which gives a way to express the intention to fill
+// SkipIfFieldNotEmpty is another [SkipCondition] implementation which gives a way to express the intention to fill
 // one of two fields but not both.
-type SkipIfFiledNotEmpty struct {
+type SkipIfFieldNotEmpty struct {
 	Name string
 }
 
-func (s SkipIfFiledNotEmpty) ShouldBeSkipped(form *Form) bool {
+func (s SkipIfFieldNotEmpty) ShouldBeSkipped(form *Form) bool {
 	return form.Fields.FindField(s.Name).Data != nil
 }
