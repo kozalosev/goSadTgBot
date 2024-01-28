@@ -15,6 +15,22 @@ type MessageHandler interface {
 	Handle(reqenv *RequestEnv, msg *tgbotapi.Message)
 }
 
+type CommandScope string
+
+const (
+	CommandScopeDefault         CommandScope = "default"
+	CommandScopeAllPrivateChats CommandScope = "all_private_chats"
+	CommandScopeAllGroupChats   CommandScope = "all_group_chats"
+	CommandScopeAllChatAdmins   CommandScope = "all_chat_administrators"
+)
+
+var commandScopes = []CommandScope{
+	CommandScopeDefault,
+	CommandScopeAllPrivateChats,
+	CommandScopeAllGroupChats,
+	CommandScopeAllChatAdmins,
+}
+
 // CommandHandler is a MessageHandler which is considered as a public command that will be registered automatically.
 // https://core.telegram.org/bots/api#setmycommands
 // Inject [CommandHandlerTrait] to get the default implementation of CanHandle().
@@ -22,6 +38,7 @@ type CommandHandler interface {
 	MessageHandler
 
 	GetCommands() []string
+	GetScopes() []CommandScope
 }
 
 // InlineHandler is a handler for the [tgbotapi.InlineQuery] update type.

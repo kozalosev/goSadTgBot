@@ -1,7 +1,6 @@
 package base
 
 import (
-	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/kozalosev/goSadTgBot/settings"
@@ -72,24 +71,19 @@ func (bot *BotAPI) GetName() string {
 func (bot *BotAPI) SetCommands(locpool *loc.Pool, langCodes []string, handlers []CommandHandler) {
 	for _, langCode := range langCodes {
 		lc := locpool.GetContext(langCode)
-		commands := funk.Map(handlers, func(h CommandHandler) tgbotapi.BotCommand {
-			mainCmd := h.GetCommands()[0]
-			description := lc.Tr(fmt.Sprintf(cmdTrTemplate, mainCmd))
-			return tgbotapi.BotCommand{
-				Command:     mainCmd,
-				Description: description,
+		for _, scope := range commandScopes {
+			tgScope := tgbotapi.BotCommandScope{Type: string(scope)}
+			commands := filterCommandsByScope(handlers, scope, lc)
+			req := tgbotapi.NewSetMyCommandsWithScopeAndLanguage(tgScope, langCode, commands...)
+
+			logEntry := log.WithField(logconst.FieldFunc, "setCommands").
+				WithField(logconst.FieldCalledObject, "BotAPI").
+				WithField(logconst.FieldCalledMethod, "Request")
+			if err := bot.Request(req); err != nil {
+				logEntry.Error(err)
+			} else {
+				logEntry.Info("Commands were successfully updated!")
 			}
-		}).([]tgbotapi.BotCommand)
-
-		req := tgbotapi.NewSetMyCommandsWithScopeAndLanguage(tgbotapi.NewBotCommandScopeDefault(), langCode, commands...)
-
-		logEntry := log.WithField(logconst.FieldFunc, "setCommands").
-			WithField(logconst.FieldCalledObject, "BotAPI").
-			WithField(logconst.FieldCalledMethod, "Request")
-		if err := bot.Request(req); err != nil {
-			logEntry.Error(err)
-		} else {
-			logEntry.Info("Commands were successfully updated!")
 		}
 	}
 }
