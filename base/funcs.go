@@ -8,7 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/thoas/go-funk"
 	"golang.org/x/exp/slices"
-	"strings"
 )
 
 const cmdTrTemplate = "commands.%s.description"
@@ -19,14 +18,6 @@ var (
 		msgConfig.ParseMode = tgbotapi.ModeMarkdown
 	}
 )
-
-// GetCommandArgument extracts a command argument from the text of a message.
-// For example:
-//   - "/foo bar" will result in "bar"
-//   - "/foo" will result in ""
-func GetCommandArgument(msg *tgbotapi.Message) string {
-	return strings.TrimSpace(strings.TrimPrefix(msg.Text, "/"+msg.Command()))
-}
 
 func ConvertHandlersToCommands(handlers []MessageHandler) []CommandHandler {
 	var commands []CommandHandler
