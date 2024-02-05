@@ -55,6 +55,25 @@ func (form *Form) AddPrefilledField(name string, value interface{}) {
 	form.Fields = append(form.Fields, field)
 }
 
+func (form *Form) AddPrefilledAutoField(name string, msg *tgbotapi.Message) {
+	form.AddEmptyField(name, Auto)
+	field := form.Fields.FindField(name)
+	field.restoreExtractor(msg)
+	field.Data = field.extractor(msg)
+}
+
+func (form *Form) AllRequiredFieldsFilled() bool {
+	if len(form.Fields) < cap(form.Fields) {
+		return false
+	}
+	for _, field := range form.Fields {
+		if field.Data == nil && !shouldBeSkipped(field, form) {
+			return false
+		}
+	}
+	return true
+}
+
 func (form *Form) ProcessNextField(reqenv *base.RequestEnv, msg *tgbotapi.Message) {
 	maxIndex := len(form.Fields) - 1
 start:

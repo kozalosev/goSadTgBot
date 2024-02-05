@@ -14,6 +14,10 @@ type Wizard interface {
 	AddEmptyField(name string, fieldType FieldType)
 	// AddPrefilledField creates a field with already filled in value. It may be useful when some arguments were passed in a command immediately.
 	AddPrefilledField(name string, value interface{})
+	// AddPrefilledAutoField is supposed for a special case when you want to fill the field with a value of unknown type, determined by the content of some message (ReplyToMessage, for example).
+	AddPrefilledAutoField(name string, msg *tgbotapi.Message)
+	// AllRequiredFieldsFilled returns true if all required fields are already prefilled.
+	AllRequiredFieldsFilled() bool
 	// ProcessNextField runs the form machinery. Call this method when all fields were created.
 	ProcessNextField(reqenv *base.RequestEnv, msg *tgbotapi.Message)
 }

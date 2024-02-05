@@ -33,6 +33,33 @@ func TestForm_AddPrefilledField(t *testing.T) {
 	assert.Equal(t, Text, resField.Type)
 }
 
+func TestForm_AddPrefilledAutoField(t *testing.T) {
+	wizard := NewWizard(testHandler{}, 2)
+	msgTxt := tgbotapi.Message{Text: TestValue}
+	msgSticker := tgbotapi.Message{Sticker: &tgbotapi.Sticker{FileID: TestValue}}
+	wizard.AddPrefilledAutoField(TestName, &msgTxt)
+	wizard.AddPrefilledAutoField(TestName2, &msgSticker)
+
+	form := wizard.(*Form)
+	resTxtField := form.Fields[0]
+	resStickerField := form.Fields[1]
+
+	assert.Equal(t, TestName, resTxtField.Name)
+	assert.Equal(t, Txt{Value: TestValue}, resTxtField.Data)
+	assert.Equal(t, Text, resTxtField.Type)
+
+	assert.Equal(t, TestName2, resStickerField.Name)
+	assert.Equal(t, File{ID: TestValue}, resStickerField.Data)
+	assert.Equal(t, Sticker, resStickerField.Type)
+}
+
+func TestForm_AllRequiredFieldsFilled(t *testing.T) {
+	wizard := NewWizard(testHandler{}, 1)
+	assert.False(t, wizard.AllRequiredFieldsFilled())
+	wizard.AddPrefilledField(TestName, TestValue)
+	assert.True(t, wizard.AllRequiredFieldsFilled())
+}
+
 func TestRestorationOfFunctions(t *testing.T) {
 	wizard := NewWizard(testHandler{}, 1)
 	wizard.AddEmptyField(TestName, Text)
@@ -119,6 +146,7 @@ func (testHandler) GetWizardEnv() *Env {
 func (h testHandler) GetWizardDescriptor() *FormDescriptor {
 	desc := NewWizardDescriptor(tAction)
 	desc.AddField(TestName, TestPromptDesc)
+	desc.AddField(TestName2, TestPromptDesc)
 	return desc
 }
 
