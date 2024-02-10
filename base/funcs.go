@@ -13,8 +13,8 @@ import (
 const cmdTrTemplate = "commands.%s.description"
 
 var (
-	noOpCustomizer     MessageCustomizer = func(msgConfig *tgbotapi.MessageConfig) {}
-	markdownCustomizer MessageCustomizer = func(msgConfig *tgbotapi.MessageConfig) {
+	NoOpCustomizer     MessageCustomizer = func(msgConfig *tgbotapi.MessageConfig) {}
+	MarkdownCustomizer MessageCustomizer = func(msgConfig *tgbotapi.MessageConfig) {
 		msgConfig.ParseMode = tgbotapi.ModeMarkdown
 	}
 )
@@ -100,11 +100,11 @@ func (bot *BotAPI) ReplyWithMessageCustomizer(msg *tgbotapi.Message, text string
 }
 
 func (bot *BotAPI) Reply(msg *tgbotapi.Message, text string) {
-	bot.ReplyWithMessageCustomizer(msg, text, noOpCustomizer)
+	bot.ReplyWithMessageCustomizer(msg, text, NoOpCustomizer)
 }
 
 func (bot *BotAPI) ReplyWithMarkdown(msg *tgbotapi.Message, text string) {
-	bot.ReplyWithMessageCustomizer(msg, text, markdownCustomizer)
+	bot.ReplyWithMessageCustomizer(msg, text, MarkdownCustomizer)
 }
 
 func (bot *BotAPI) ReplyWithKeyboard(msg *tgbotapi.Message, text string, options []string) {
