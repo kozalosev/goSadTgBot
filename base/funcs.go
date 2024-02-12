@@ -111,9 +111,9 @@ func (bot *BotAPI) ReplyWithKeyboard(msg *tgbotapi.Message, text string, options
 	buttons := funk.Map(options, func(s string) tgbotapi.KeyboardButton {
 		return tgbotapi.NewKeyboardButton(s)
 	}).([]tgbotapi.KeyboardButton)
-	keyboard := tgbotapi.NewOneTimeReplyKeyboard(
-		tgbotapi.NewKeyboardButtonRow(buttons...),
-	)
+	rows := chunkBy(buttons, buttonsPerRow)
+	keyboard := tgbotapi.NewOneTimeReplyKeyboard(rows...)
+	keyboard.ResizeKeyboard = true
 
 	bot.ReplyWithMessageCustomizer(msg, text, func(msgConfig *tgbotapi.MessageConfig) {
 		msgConfig.ReplyMarkup = keyboard
