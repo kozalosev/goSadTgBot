@@ -63,8 +63,14 @@ func (fs Fields) FindField(name string) *Field {
 // Send a prompt message to the user.
 func (f *Field) askUser(reqenv *base.RequestEnv, msg *tgbotapi.Message) {
 	promptDescription := reqenv.Lang.Tr(f.descriptor.promptDescription)
+	var inlineKeyboardAnswers []string
 	if len(f.descriptor.InlineKeyboardAnswers) > 0 {
-		inlineAnswers := funk.Map(f.descriptor.InlineKeyboardAnswers, func(s string) tgbotapi.InlineKeyboardButton {
+		inlineKeyboardAnswers = f.descriptor.InlineKeyboardAnswers
+	} else if f.descriptor.InlineKeyboardBuilder != nil {
+		inlineKeyboardAnswers = f.descriptor.InlineKeyboardBuilder(reqenv, msg, f.Form)
+	}
+	if len(inlineKeyboardAnswers) > 0 {
+		inlineAnswers := funk.Map(inlineKeyboardAnswers, func(s string) tgbotapi.InlineKeyboardButton {
 			btn := tgbotapi.InlineKeyboardButton{Text: reqenv.Lang.Tr(s)}
 			if customizer, ok := f.descriptor.inlineButtonCustomizers[s]; ok {
 				customizer(&btn, f)
