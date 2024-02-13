@@ -15,6 +15,10 @@ type InlineButtonCustomizer func(btn *tgbotapi.InlineKeyboardButton, f *Field)
 // must choose the option from a result set fetched from the database.
 type ReplyKeyboardBuilder func(reqenv *base.RequestEnv, msg *tgbotapi.Message) []string
 
+// InlineKeyboardBuilder is used to generate variants for the inline keyboard. It can be used instead of
+// InlineKeyboardAnswers when you want to have different sets of buttons depending on the current state of the wizard.
+type InlineKeyboardBuilder func(reqenv *base.RequestEnv, msg *tgbotapi.Message, form *Form) []string
+
 // FormDescriptor is the description of a wizard, describing all non-storable parameters.
 // Use [NewWizardDescriptor] to create one.
 type FormDescriptor struct {
@@ -33,6 +37,7 @@ type FieldDescriptor struct {
 	// keyboard options; you can attach either a reply keyboard or inline one, but not both
 	ReplyKeyboardBuilder      ReplyKeyboardBuilder
 	InlineKeyboardAnswers     []string
+	InlineKeyboardBuilder     InlineKeyboardBuilder
 	DisableKeyboardValidation bool
 
 	// this text will be used to ask the user for the field value
