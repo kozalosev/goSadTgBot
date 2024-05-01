@@ -14,7 +14,7 @@ import (
 func TestCallbackQueryHandler(t *testing.T) {
 	msg := &tgbotapi.Message{
 		Text:      "not" + TestValue,
-		Chat:      &tgbotapi.Chat{ID: TestID},
+		Chat:      tgbotapi.Chat{ID: TestID},
 		MessageID: TestID,
 		From:      &tgbotapi.User{ID: TestID},
 	}

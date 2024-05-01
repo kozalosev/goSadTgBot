@@ -88,7 +88,7 @@ func (bot *BotAPI) ReplyWithMessageCustomizer(msg *tgbotapi.Message, text string
 	}
 
 	reply := tgbotapi.NewMessage(msg.Chat.ID, text)
-	reply.ReplyToMessageID = msg.MessageID
+	reply.ReplyParameters.MessageID = msg.MessageID
 	customizer(&reply)
 	if _, err := bot.internal.Send(reply); err != nil {
 		log.WithField(logconst.FieldObject, "BotAPI").
