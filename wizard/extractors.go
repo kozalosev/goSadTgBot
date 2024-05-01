@@ -18,10 +18,11 @@ type Txt struct {
 // File is a representation of Telegram cached files.
 // https://core.telegram.org/bots/api#file
 type File struct {
-	ID       string // file_id
-	UniqueID string // file_unique_id
-	Caption  string // optional, not for all types
-	Entities []tgbotapi.MessageEntity
+	ID              string                   // file_id
+	UniqueID        string                   // file_unique_id
+	Caption         string                   // optional, not for all types
+	Entities        []tgbotapi.MessageEntity // optional, caption entities
+	HasMediaSpoiler bool                     // has_media_spoiler; can be true only for photos, videos and animations
 }
 
 // LocData represents a point on the map.
@@ -57,7 +58,8 @@ func videoExtractor(m *tgbotapi.Message) interface{} {
 	if m.Video == nil {
 		return nil
 	}
-	return File{ID: m.Video.FileID, UniqueID: m.Video.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
+	return File{ID: m.Video.FileID, UniqueID: m.Video.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities,
+		HasMediaSpoiler: m.HasMediaSpoiler}
 }
 func videoNoteExtractor(m *tgbotapi.Message) interface{} {
 	if m.VideoNote == nil {
@@ -69,7 +71,8 @@ func gifExtractor(m *tgbotapi.Message) interface{} {
 	if m.Animation == nil {
 		return nil
 	}
-	return File{ID: m.Animation.FileID, UniqueID: m.Animation.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
+	return File{ID: m.Animation.FileID, UniqueID: m.Animation.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities,
+		HasMediaSpoiler: m.HasMediaSpoiler}
 }
 func documentExtractor(m *tgbotapi.Message) interface{} {
 	if m.Document == nil {
@@ -82,7 +85,8 @@ func imageExtractor(m *tgbotapi.Message) interface{} {
 		return nil
 	}
 	photo := m.Photo[len(m.Photo)-1]
-	return File{ID: photo.FileID, UniqueID: photo.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
+	return File{ID: photo.FileID, UniqueID: photo.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities,
+		HasMediaSpoiler: m.HasMediaSpoiler}
 }
 func locationExtractor(m *tgbotapi.Message) interface{} {
 	if m.Location == nil {
