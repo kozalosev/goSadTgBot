@@ -1,8 +1,8 @@
 package app
 
 import (
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/go-redis/redis/v8"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/kozalosev/goSadTgBot/metrics"
