@@ -2,13 +2,14 @@ package wizard
 
 import (
 	"errors"
+	"fmt"
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/loctools/go-l10n/loc"
-	log "github.com/sirupsen/logrus"
 	"github.com/thoas/go-funk"
 	"golang.org/x/exp/slices"
+	log "log/slog"
 )
 
 const ValidErrNotInListTr = "errors.validation.option.not.in.list"
@@ -53,9 +54,9 @@ func (fs Fields) FindField(name string) *Field {
 		return nil
 	}
 	if len(found) > 1 {
-		log.WithField(logconst.FieldObject, "Fields").
-			WithField(logconst.FieldCalledMethod, "FindField").
-			Warning("More than needed: ", found)
+		log.Warn(fmt.Sprintf("More than needed: %+v", found),
+			logconst.FieldObject, "Fields",
+			logconst.FieldCalledMethod, "FindField")
 	}
 	return found[0]
 }

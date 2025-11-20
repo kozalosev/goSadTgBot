@@ -5,7 +5,7 @@ import (
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/app"
 	"github.com/kozalosev/goSadTgBot/logconst"
-	log "github.com/sirupsen/logrus"
+	log "log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -17,8 +17,8 @@ func AddHttpHandlerForWebhook(bot *tgbotapi.BotAPI, appParams *app.Params, wg *s
 	whParams := getWebhookParamsFromEnv()
 	path := fmt.Sprintf("/%s/%s", whParams.path, bot.Token)
 	whURL := fmt.Sprintf("https://%s:%s/%s%s", whParams.host, whParams.port, whParams.appPath, path)
-	log.WithField(logconst.FieldFunc, "addHttpHandlerForWebhook").
-		Info("Webhook URL: ", whURL[:len(bot.Token)], "/***")
+	log.Info(fmt.Sprintf("Webhook URL: %s/***", whURL[:len(bot.Token)]),
+		logconst.FieldFunc, "addHttpHandlerForWebhook")
 	wh, err := tgbotapi.NewWebhook(whURL)
 	if err != nil {
 		panic(err)
@@ -29,10 +29,11 @@ func AddHttpHandlerForWebhook(bot *tgbotapi.BotAPI, appParams *app.Params, wg *s
 	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		upd, err := bot.HandleUpdate(r)
 		if err != nil {
-			log.WithField(logconst.FieldFunc, "addHttpHandlerForWebhook").
-				WithField(logconst.FieldCalledObject, "BotAPI").
-				WithField(logconst.FieldCalledMethod, "HandleUpdate").
-				Error(err)
+			log.Error("Couldn't handle the update",
+				logconst.FieldFunc, "addHttpHandlerForWebhook",
+				logconst.FieldCalledObject, "BotAPI",
+				logconst.FieldCalledMethod, "HandleUpdate",
+				logconst.FieldError, err)
 		} else {
 			app.HandleUpdate(appParams, wg, upd)
 		}

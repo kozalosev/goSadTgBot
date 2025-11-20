@@ -6,7 +6,7 @@ import (
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
-	log "github.com/sirupsen/logrus"
+	log "log/slog"
 	"strings"
 )
 
@@ -44,10 +44,7 @@ func CallbackQueryHandler(reqenv *base.RequestEnv, query *tgbotapi.CallbackQuery
 	if err != nil {
 		c = tgbotapi.NewCallbackWithAlert(query.ID, reqenv.Lang.Tr(callbackDataErrorTr))
 		if err = resources.appEnv.Bot.Request(c); err != nil {
-			log.WithField(logconst.FieldHandler, "wizard.CallbackQueryHandler").
-				WithField(logconst.FieldCalledObject, "BotAPI").
-				WithField(logconst.FieldCalledMethod, "Request").
-				Error(err)
+			logError(err)
 		}
 	} else {
 		chosenValue := reqenv.Lang.Tr(fieldValue)
@@ -59,9 +56,14 @@ func CallbackQueryHandler(reqenv *base.RequestEnv, query *tgbotapi.CallbackQuery
 		form.ProcessNextField(reqenv, msg)
 	}
 	if err := resources.appEnv.Bot.Request(c); err != nil {
-		log.WithField(logconst.FieldHandler, "wizard.CallbackQueryHandler").
-			WithField(logconst.FieldCalledObject, "BotAPI").
-			WithField(logconst.FieldCalledMethod, "Request").
-			Error(err)
+		logError(err)
 	}
+}
+
+func logError(err error) {
+	log.Error("Couldn't send a response to the callback query",
+		logconst.FieldHandler, "wizard.CallbackQueryHandler",
+		logconst.FieldCalledObject, "BotAPI",
+		logconst.FieldCalledMethod, "Request",
+		logconst.FieldError, err)
 }

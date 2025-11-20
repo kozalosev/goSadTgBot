@@ -4,7 +4,7 @@ import (
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
-	log "github.com/sirupsen/logrus"
+	log "log/slog"
 	"reflect"
 	"strings"
 )
@@ -106,11 +106,12 @@ start:
 	}
 
 	if err := form.resources.stateStorage.SaveState(msg.From.ID, form); err != nil {
-		log.WithField(logconst.FieldObject, "Form").
-			WithField(logconst.FieldMethod, "ProcessNextField").
-			WithField(logconst.FieldCalledObject, "StateStorage").
-			WithField(logconst.FieldCalledMethod, "SaveState").
-			Error(err)
+		log.Error("Couldn't save the state of a wizard",
+			logconst.FieldObject, "Form",
+			logconst.FieldMethod, "ProcessNextField",
+			logconst.FieldCalledObject, "StateStorage",
+			logconst.FieldCalledMethod, "SaveState",
+			logconst.FieldError, err)
 	}
 }
 

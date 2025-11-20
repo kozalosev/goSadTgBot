@@ -5,9 +5,9 @@ import (
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/kozalosev/goSadTgBot/settings"
 	"github.com/loctools/go-l10n/loc"
-	log "github.com/sirupsen/logrus"
 	"github.com/thoas/go-funk"
 	"golang.org/x/exp/slices"
+	log "log/slog"
 )
 
 const cmdTrTemplate = "commands.%s.description"
@@ -67,13 +67,16 @@ func (bot *BotAPI) SetCommands(locpool *loc.Pool, langCodes []string, handlers [
 			commands := filterCommandsByScope(handlers, scope, lc)
 			req := tgbotapi.NewSetMyCommandsWithScopeAndLanguage(tgScope, langCode, commands...)
 
-			logEntry := log.WithField(logconst.FieldFunc, "setCommands").
-				WithField(logconst.FieldCalledObject, "BotAPI").
-				WithField(logconst.FieldCalledMethod, "Request")
+			logger := log.With(
+				logconst.FieldFunc, "setCommands",
+				logconst.FieldCalledObject, "BotAPI",
+				logconst.FieldCalledMethod, "Request",
+			)
 			if err := bot.Request(req); err != nil {
-				logEntry.Error(err)
+				logger.Error("Error while updating the bot commands",
+					logconst.FieldError, err)
 			} else {
-				logEntry.Info("Commands were successfully updated!")
+				logger.Info("Commands were successfully updated!")
 			}
 		}
 	}
@@ -81,9 +84,9 @@ func (bot *BotAPI) SetCommands(locpool *loc.Pool, langCodes []string, handlers [
 
 func (bot *BotAPI) ReplyWithMessageCustomizer(msg *tgbotapi.Message, text string, customizer MessageCustomizer) {
 	if len(text) == 0 {
-		log.WithField(logconst.FieldObject, "BotAPI").
-			WithField(logconst.FieldMethod, "ReplyWithMessageCustomizer").
-			Error("Empty reply for the message: " + msg.Text)
+		log.Error("Empty reply for the message: "+msg.Text,
+			logconst.FieldObject, "BotAPI",
+			logconst.FieldMethod, "ReplyWithMessageCustomizer")
 		return
 	}
 
@@ -91,11 +94,12 @@ func (bot *BotAPI) ReplyWithMessageCustomizer(msg *tgbotapi.Message, text string
 	reply.ReplyParameters.MessageID = msg.MessageID
 	customizer(&reply)
 	if _, err := bot.internal.Send(reply); err != nil {
-		log.WithField(logconst.FieldObject, "BotAPI").
-			WithField(logconst.FieldMethod, "ReplyWithMessageCustomizer").
-			WithField(logconst.FieldCalledObject, "internal").
-			WithField(logconst.FieldCalledMethod, "Send").
-			Error(err)
+		log.Error("Error while sending a reply",
+			logconst.FieldObject, "BotAPI",
+			logconst.FieldMethod, "ReplyWithMessageCustomizer",
+			logconst.FieldCalledObject, "internal",
+			logconst.FieldCalledMethod, "Send",
+			logconst.FieldError, err)
 	}
 }
 

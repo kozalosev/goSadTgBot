@@ -11,4 +11,7 @@ const (
 	FieldCalledFunc   = "calledFunc"
 	FieldCalledObject = "calledObject"
 	FieldCalledMethod = "calledMethod"
+
+	FieldError = "error"
+	FieldQuery = "query"
 )

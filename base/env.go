@@ -2,7 +2,7 @@ package base
 
 import (
 	"github.com/kozalosev/goSadTgBot/logconst"
-	log "github.com/sirupsen/logrus"
+	log "log/slog"
 	"os"
 	"strconv"
 )
@@ -11,9 +11,10 @@ var buttonsPerRow = 6
 
 func init() {
 	if buttonsPerRowEnv, err := strconv.Atoi(os.Getenv("BUTTONS_PER_ROW")); err != nil {
-		log.WithField(logconst.FieldFunc, "init").
-			WithField(logconst.FieldConst, "BUTTONS_PER_ROW").
-			Error(err)
+		log.Error("error while initializing an environment variable",
+			logconst.FieldFunc, "init",
+			logconst.FieldConst, "BUTTONS_PER_ROW",
+			logconst.FieldError, err)
 	} else {
 		buttonsPerRow = buttonsPerRowEnv
 	}

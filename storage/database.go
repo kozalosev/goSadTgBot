@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kozalosev/goSadTgBot/logconst"
-	log "github.com/sirupsen/logrus"
+	log "log/slog"
 	"os"
 	"strconv"
 )
@@ -42,34 +42,41 @@ func NewDatabaseConfig(host, port, username, password, dbName string) *DatabaseC
 
 // ConnectToDatabase returns a connection pool, which can be used to execute queries to the database.
 func ConnectToDatabase(ctx context.Context, config *DatabaseConfig) *pgxpool.Pool {
+	logger := log.With(logconst.FieldFunc, "ConnectToDatabase")
+
 	intPort, err := strconv.ParseInt(config.port, 10, strconv.IntSize)
 	if err != nil {
-		log.WithField(logconst.FieldFunc, "ConnectToDatabase").
-			WithField(logconst.FieldCalledFunc, "ParseInt").
-			Fatal(err)
+		logger.Error("Couldn't parse a database port number",
+			logconst.FieldCalledFunc, "ParseInt",
+			logconst.FieldError, err)
+		os.Exit(1)
 	}
 
 	connURL := fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
 		config.user, config.password, config.host, intPort, config.dbName)
 	conn, err := pgxpool.New(ctx, connURL)
 	if err != nil {
-		log.WithField(logconst.FieldFunc, "ConnectToDatabase").
-			WithField(logconst.FieldCalledObject, "Pool").
-			WithField(logconst.FieldCalledMethod, "New").
-			Fatal(err)
+		logger.Error("Couldn't create a database connection pool",
+			logconst.FieldCalledObject, "Pool",
+			logconst.FieldCalledMethod, "New",
+			logconst.FieldError, err)
+		os.Exit(1)
 	}
 
 	if err := conn.Ping(ctx); err != nil {
-		log.WithField(logconst.FieldFunc, "ConnectToDatabase").
-			WithField(logconst.FieldCalledObject, "Pool").
-			WithField(logconst.FieldCalledMethod, "Ping").
-			Fatal(err)
+		logger.Error("Couldn't ping the database",
+			logconst.FieldCalledObject, "Pool",
+			logconst.FieldCalledMethod, "Ping",
+			logconst.FieldError, err)
+		os.Exit(1)
 	}
 	return conn
 }
 
 // RunMigrations either from source code on a local machine if available (for developers) or from a GitHub repository (for production).
 func RunMigrations(config *DatabaseConfig, migrationsRepo string) {
+	logger := log.With(logconst.FieldFunc, "RunMigrations")
+
 	var sourceURL string
 	if _, err := os.Stat(migrationsPath); err == nil {
 		sourceURL = "file://" + migrationsPath
@@ -78,8 +85,7 @@ func RunMigrations(config *DatabaseConfig, migrationsRepo string) {
 	} else if _, err := os.Stat("../../" + migrationsPath); err == nil {
 		sourceURL = "file://../../" + migrationsPath
 	} else {
-		log.WithField(logconst.FieldFunc, "RunMigrations").
-			Warning("Run migrations from the repository")
+		logger.Warn("Run migrations from the repository")
 		sourceURL = "github://" + migrationsRepo + "/" + migrationsPath
 	}
 	databaseURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
@@ -87,15 +93,17 @@ func RunMigrations(config *DatabaseConfig, migrationsRepo string) {
 
 	m, err := migrate.New(sourceURL, databaseURL)
 	if err != nil {
-		log.WithField(logconst.FieldFunc, "RunMigrations").
-			WithField(logconst.FieldCalledFunc, "migrate.New").
-			Fatal(err)
+		log.Error("migrate.New failed",
+			logconst.FieldCalledFunc, "migrate.New",
+			logconst.FieldError, err)
+		os.Exit(1)
 	}
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.WithField(logconst.FieldFunc, "RunMigrations").
-			WithField(logconst.FieldCalledObject, "Migrate").
-			WithField(logconst.FieldCalledMethod, "Up").
-			Fatal(err)
+		log.Error("Couldn't apply migrations",
+			logconst.FieldCalledObject, "Migrate",
+			logconst.FieldCalledMethod, "Up",
+			logconst.FieldError, err)
+		os.Exit(1)
 	}
 }
 

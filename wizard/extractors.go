@@ -1,9 +1,10 @@
 package wizard
 
 import (
+	"fmt"
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/logconst"
-	log "github.com/sirupsen/logrus"
+	log "log/slog"
 )
 
 type fieldExtractor func(msg *tgbotapi.Message) interface{}
@@ -152,9 +153,9 @@ func (f *Field) restoreExtractor(msg *tgbotapi.Message) {
 	case Location:
 		f.extractor = locationExtractor
 	default:
-		log.WithField(logconst.FieldObject, "Field").
-			WithField(logconst.FieldCalledMethod, "restoreExtractor").
-			Warningf("No action was found for %+v", msg)
+		log.Warn(fmt.Sprintf("No action was found for %+v", msg),
+			logconst.FieldObject, "Field",
+			logconst.FieldCalledMethod, "restoreExtractor")
 		f.extractor = nilExtractor
 	}
 }

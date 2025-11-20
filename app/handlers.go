@@ -1,13 +1,14 @@
 package app
 
 import (
+	"fmt"
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/go-redis/redis/v8"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/kozalosev/goSadTgBot/metrics"
 	"github.com/kozalosev/goSadTgBot/wizard"
-	log "github.com/sirupsen/logrus"
+	log "log/slog"
 	"strings"
 	"sync"
 )
@@ -68,8 +69,9 @@ func processMessage(appParams *Params, msg *tgbotapi.Message) {
 		return
 	}
 	if err != redis.Nil {
-		log.WithField(logconst.FieldFunc, "processMessage").
-			Error("error occurred while getting current state: ", err)
+		log.Error("error occurred while getting current state",
+			logconst.FieldFunc, "processMessage",
+			logconst.FieldError, err)
 		return
 	}
 
@@ -104,8 +106,9 @@ func processCallbackQuery(appParams *Params, query *tgbotapi.CallbackQuery) {
 
 	splitData := strings.SplitN(query.Data, ":", 2)
 	if len(splitData) < 2 {
-		log.WithField(logconst.FieldFunc, "processCallbackQuery").
-			Warningf("Unexpected callback: %+v", query)
+		log.Warn("Unexpected callback",
+			logconst.FieldFunc, "processCallbackQuery",
+			logconst.FieldQuery, fmt.Sprintf("%+v", query))
 		return
 	}
 	prefix := splitData[0] + ":"

@@ -4,8 +4,9 @@ package server
 import (
 	"context"
 	"github.com/kozalosev/goSadTgBot/logconst"
-	log "github.com/sirupsen/logrus"
+	log "log/slog"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -14,10 +15,12 @@ func Start(port string) *http.Server {
 	srv := &http.Server{Addr: ":" + port}
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			log.WithField(logconst.FieldFunc, "startServer").
-				WithField(logconst.FieldCalledObject, "Server").
-				WithField(logconst.FieldCalledMethod, "ListenAndServe").
-				Fatal(err)
+			log.Error("Couldn't start the server",
+				logconst.FieldFunc, "startServer",
+				logconst.FieldCalledObject, "Server",
+				logconst.FieldCalledMethod, "ListenAndServe",
+				logconst.FieldError, err)
+			os.Exit(1)
 		}
 	}()
 	return srv
@@ -28,9 +31,10 @@ func StopListeningForIncomingRequests(srv *http.Server) {
 	ctx, c := context.WithTimeout(context.Background(), time.Minute)
 	defer c()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.WithField(logconst.FieldFunc, "stopListeningForIncomingRequests").
-			WithField(logconst.FieldCalledObject, "Server").
-			WithField(logconst.FieldCalledMethod, "Shutdown").
-			Error(err)
+		log.Error("Error while shutting down the server",
+			logconst.FieldFunc, "stopListeningForIncomingRequests",
+			logconst.FieldCalledObject, "Server",
+			logconst.FieldCalledMethod, "Shutdown",
+			logconst.FieldError, err)
 	}
 }
