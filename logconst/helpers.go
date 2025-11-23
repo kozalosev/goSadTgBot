@@ -12,7 +12,11 @@ func FailedToScanDatabaseRow(serviceName, methodName string, err error) {
 }
 
 func FailedToParseEnvironmentVariable(name string, err error) {
-	log.Error("parsing of an environment variable failed",
+	FailedToParseEnvironmentVariableWithContext(log.Default(), name, err)
+}
+
+func FailedToParseEnvironmentVariableWithContext(logger *log.Logger, name string, err error) {
+	logger.Error("parsing of an environment variable failed",
 		FieldConst, name,
 		FieldError, err)
 }
