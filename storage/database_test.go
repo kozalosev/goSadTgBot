@@ -36,6 +36,11 @@ func TestEverything(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	defer func() {
+		if err := testcontainers.TerminateContainer(container); err != nil {
+			panic(err)
+		}
+	}()
 
 	host, err := container.Host(ctx)
 	assert.Nil(t, err)

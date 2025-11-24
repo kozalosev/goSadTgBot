@@ -45,7 +45,7 @@ func (builder LoggerBuilder) ForMethod(name string) *log.Logger {
 }
 
 func (builder LoggerBuilder) With(args ...any) *log.Logger {
-	return builder.logger.With(args)
+	return builder.logger.With(args...)
 }
 
 func (builder LoggerBuilder) Use() *log.Logger {
