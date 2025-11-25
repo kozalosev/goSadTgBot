@@ -29,7 +29,7 @@ func AddHttpHandlerForWebhook(bot *tgbotapi.BotAPI, appParams *app.Params, wg *s
 	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		upd, err := bot.HandleUpdate(r)
 		if err != nil {
-			log.Error("Couldn't handle the update",
+			log.Error("Failed to handle the update",
 				logconst.FieldFunc, "addHttpHandlerForWebhook",
 				logconst.FieldCalledObject, "BotAPI",
 				logconst.FieldCalledMethod, "HandleUpdate",

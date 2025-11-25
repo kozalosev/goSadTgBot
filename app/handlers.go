@@ -69,7 +69,7 @@ func processMessage(appParams *Params, msg *tgbotapi.Message) {
 		return
 	}
 	if err != redis.Nil {
-		log.Error("error occurred while getting current state",
+		log.Error("Failed to get a current state",
 			logconst.FieldFunc, "processMessage",
 			logconst.FieldError, err)
 		return

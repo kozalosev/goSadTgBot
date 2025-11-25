@@ -73,7 +73,7 @@ func (bot *BotAPI) SetCommands(locpool *loc.Pool, langCodes []string, handlers [
 				logconst.FieldCalledMethod, "Request",
 			)
 			if err := bot.Request(req); err != nil {
-				logger.Error("Error while updating the bot commands",
+				logger.Error("Failed to update the bot commands",
 					logconst.FieldError, err)
 			} else {
 				logger.Info("Commands were successfully updated!")
@@ -94,7 +94,7 @@ func (bot *BotAPI) ReplyWithMessageCustomizer(msg *tgbotapi.Message, text string
 	reply.ReplyParameters.MessageID = msg.MessageID
 	customizer(&reply)
 	if _, err := bot.internal.Send(reply); err != nil {
-		log.Error("Error while sending a reply",
+		log.Error("Failed to send a reply",
 			logconst.FieldObject, "BotAPI",
 			logconst.FieldMethod, "ReplyWithMessageCustomizer",
 			logconst.FieldCalledObject, "internal",

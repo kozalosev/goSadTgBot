@@ -61,7 +61,7 @@ func CallbackQueryHandler(reqenv *base.RequestEnv, query *tgbotapi.CallbackQuery
 }
 
 func logError(err error) {
-	log.Error("Couldn't send a response to the callback query",
+	log.Error("Failed to send a response to the callback query",
 		logconst.FieldHandler, "wizard.CallbackQueryHandler",
 		logconst.FieldCalledObject, "BotAPI",
 		logconst.FieldCalledMethod, "Request",

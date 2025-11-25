@@ -11,10 +11,9 @@ var buttonsPerRow = 6
 
 func init() {
 	if buttonsPerRowEnv, err := strconv.Atoi(os.Getenv("BUTTONS_PER_ROW")); err != nil {
-		log.Error("error while initializing an environment variable",
-			logconst.FieldFunc, "init",
-			logconst.FieldConst, "BUTTONS_PER_ROW",
-			logconst.FieldError, err)
+		logconst.LogFailToParseEnvironmentVariableWithContext(
+			log.With(logconst.FieldFunc, "init"),
+			"BUTTONS_PER_ROW", err)
 	} else {
 		buttonsPerRow = buttonsPerRowEnv
 	}

@@ -46,7 +46,7 @@ func ConnectToDatabase(ctx context.Context, config *DatabaseConfig) *pgxpool.Poo
 
 	intPort, err := strconv.ParseInt(config.port, 10, strconv.IntSize)
 	if err != nil {
-		logger.Error("Couldn't parse a database port number",
+		logger.Error("Failed to parse a database port number",
 			logconst.FieldCalledFunc, "ParseInt",
 			logconst.FieldError, err)
 		os.Exit(1)
@@ -56,7 +56,7 @@ func ConnectToDatabase(ctx context.Context, config *DatabaseConfig) *pgxpool.Poo
 		config.user, config.password, config.host, intPort, config.dbName)
 	conn, err := pgxpool.New(ctx, connURL)
 	if err != nil {
-		logger.Error("Couldn't create a database connection pool",
+		logger.Error("Failed to create a database connection pool",
 			logconst.FieldCalledObject, "Pool",
 			logconst.FieldCalledMethod, "New",
 			logconst.FieldError, err)
@@ -64,7 +64,7 @@ func ConnectToDatabase(ctx context.Context, config *DatabaseConfig) *pgxpool.Poo
 	}
 
 	if err := conn.Ping(ctx); err != nil {
-		logger.Error("Couldn't ping the database",
+		logger.Error("Failed to ping the database",
 			logconst.FieldCalledObject, "Pool",
 			logconst.FieldCalledMethod, "Ping",
 			logconst.FieldError, err)
@@ -99,7 +99,7 @@ func RunMigrations(config *DatabaseConfig, migrationsRepo string) {
 		os.Exit(1)
 	}
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Error("Couldn't apply migrations",
+		log.Error("Failed to apply migrations",
 			logconst.FieldCalledObject, "Migrate",
 			logconst.FieldCalledMethod, "Up",
 			logconst.FieldError, err)

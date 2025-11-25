@@ -1,4 +1,3 @@
-// Package logconst consists of constant values representing the fields in log messages.
 package logconst
 
 const (

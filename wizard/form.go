@@ -106,7 +106,7 @@ start:
 	}
 
 	if err := form.resources.stateStorage.SaveState(msg.From.ID, form); err != nil {
-		log.Error("Couldn't save the state of a wizard",
+		log.Error("Failed to save the state of a wizard",
 			logconst.FieldObject, "Form",
 			logconst.FieldMethod, "ProcessNextField",
 			logconst.FieldCalledObject, "StateStorage",
