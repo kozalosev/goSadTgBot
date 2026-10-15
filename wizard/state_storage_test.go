@@ -51,6 +51,18 @@ func TestRedisStateStorage_GetCurrentState(t *testing.T) {
 	assert.Equal(t, formExample, f)
 }
 
+func TestRedisStateStorage_GetCurrentState_NoState(t *testing.T) {
+	stateStorage := buildStateStorage(t)
+	defer func() {
+		assert.NoError(t, stateStorage.Close())
+	}()
+
+	var f Form
+	err := stateStorage.GetCurrentState(TestID+1, &f)
+	assert.ErrorIs(t, err, ErrNoState)
+	assert.ErrorIs(t, err, redis.Nil)
+}
+
 func TestRedisStateStorage_DeleteState(t *testing.T) {
 	stateStorage := buildStateStorage(t)
 	defer func() {

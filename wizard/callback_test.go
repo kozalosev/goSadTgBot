@@ -73,7 +73,11 @@ type inMemoryStorage struct {
 }
 
 func (i inMemoryStorage) GetCurrentState(uid int64, dest Wizard) error {
-	return copier.Copy(dest, i.storage[uid])
+	state, ok := i.storage[uid]
+	if !ok {
+		return ErrNoState
+	}
+	return copier.Copy(dest, state)
 }
 
 func (i inMemoryStorage) SaveState(uid int64, wizard Wizard) error {
