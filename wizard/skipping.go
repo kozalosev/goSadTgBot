@@ -2,8 +2,9 @@ package wizard
 
 import (
 	"fmt"
-	"github.com/kozalosev/goSadTgBot/logconst"
 	log "log/slog"
+
+	"github.com/kozalosev/goSadTgBot/logconst"
 )
 
 // SkipCondition is the condition type for [FieldDescriptor.SkipIf] field.

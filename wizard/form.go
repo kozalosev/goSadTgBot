@@ -1,12 +1,13 @@
 package wizard
 
 import (
-	tgbotapi "github.com/OvyFlash/telegram-bot-api"
-	"github.com/kozalosev/goSadTgBot/base"
-	"github.com/kozalosev/goSadTgBot/logconst"
 	log "log/slog"
 	"reflect"
 	"strings"
+
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
+	"github.com/kozalosev/goSadTgBot/base"
+	"github.com/kozalosev/goSadTgBot/logconst"
 )
 
 // localization keys

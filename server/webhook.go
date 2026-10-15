@@ -2,14 +2,15 @@ package server
 
 import (
 	"fmt"
-	tgbotapi "github.com/OvyFlash/telegram-bot-api"
-	"github.com/kozalosev/goSadTgBot/app"
-	"github.com/kozalosev/goSadTgBot/logconst"
 	log "log/slog"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
+
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
+	"github.com/kozalosev/goSadTgBot/app"
+	"github.com/kozalosev/goSadTgBot/logconst"
 )
 
 // AddHttpHandlerForWebhook uses [http.HandleFunc] to add a global route to the server.

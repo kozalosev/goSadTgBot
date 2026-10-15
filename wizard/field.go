@@ -3,13 +3,14 @@ package wizard
 import (
 	"errors"
 	"fmt"
+	log "log/slog"
+
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/loctools/go-l10n/loc"
 	"github.com/thoas/go-funk"
 	"golang.org/x/exp/slices"
-	log "log/slog"
 )
 
 const ValidErrNotInListTr = "errors.validation.option.not.in.list"

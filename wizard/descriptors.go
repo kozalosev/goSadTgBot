@@ -2,6 +2,7 @@ package wizard
 
 import (
 	"fmt"
+
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/thoas/go-funk"

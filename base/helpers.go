@@ -2,6 +2,7 @@ package base
 
 import (
 	"fmt"
+
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/loctools/go-l10n/loc"
 	"github.com/thoas/go-funk"

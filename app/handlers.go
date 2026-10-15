@@ -2,15 +2,16 @@ package app
 
 import (
 	"fmt"
+	log "log/slog"
+	"strings"
+	"sync"
+
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/go-redis/redis/v8"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/kozalosev/goSadTgBot/metrics"
 	"github.com/kozalosev/goSadTgBot/wizard"
-	log "log/slog"
-	"strings"
-	"sync"
 )
 
 const (

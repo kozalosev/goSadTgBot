@@ -2,11 +2,12 @@ package wizard
 
 import (
 	"errors"
+	"testing"
+
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/loctools/go-l10n/loc"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestForm_AddEmptyField(t *testing.T) {

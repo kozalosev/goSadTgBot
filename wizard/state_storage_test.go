@@ -3,12 +3,13 @@ package wizard
 import (
 	"context"
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"os"
-	"testing"
 )
 
 var formExample = Form{

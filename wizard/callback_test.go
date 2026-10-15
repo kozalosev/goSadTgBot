@@ -2,13 +2,14 @@ package wizard
 
 import (
 	"fmt"
+	"strconv"
+	"testing"
+
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/jinzhu/copier"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/loctools/go-l10n/loc"
 	"github.com/stretchr/testify/assert"
-	"strconv"
-	"testing"
 )
 
 func TestCallbackQueryHandler(t *testing.T) {

@@ -1,9 +1,10 @@
 package wizard
 
 import (
+	"testing"
+
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestPopulationOfWizardDescriptors(t *testing.T) {

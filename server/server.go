@@ -3,11 +3,12 @@ package server
 
 import (
 	"context"
-	"github.com/kozalosev/goSadTgBot/logconst"
 	log "log/slog"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/kozalosev/goSadTgBot/logconst"
 )
 
 // Start a server listening on the specified port.

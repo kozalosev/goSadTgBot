@@ -1,13 +1,14 @@
 package base
 
 import (
+	log "log/slog"
+
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/kozalosev/goSadTgBot/settings"
 	"github.com/loctools/go-l10n/loc"
 	"github.com/thoas/go-funk"
 	"golang.org/x/exp/slices"
-	log "log/slog"
 )
 
 const cmdTrTemplate = "commands.%s.description"

@@ -3,11 +3,12 @@ package wizard
 import (
 	"errors"
 	"fmt"
+	log "log/slog"
+	"strings"
+
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
-	log "log/slog"
-	"strings"
 )
 
 const (

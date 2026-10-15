@@ -3,11 +3,12 @@ package wizard
 import (
 	"encoding/json"
 	"errors"
+	"testing"
+
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/loctools/go-l10n/loc"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestFields_FindField(t *testing.T) {
