@@ -2,11 +2,11 @@ package storage
 
 import (
 	"context"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"strings"
-	"testing"
 )
 
 const (
@@ -46,7 +46,7 @@ func TestEverything(t *testing.T) {
 	assert.Nil(t, err)
 	containerPort, err := container.MappedPort(ctx, ExposedDBPort)
 	assert.Nil(t, err)
-	port := strings.TrimSuffix(string(containerPort), "/tcp")
+	port := containerPort.Port()
 
 	dbConfig := NewDatabaseConfig(host, port, TestUser, TestPassword, TestDB)
 	db := ConnectToDatabase(ctx, dbConfig)
