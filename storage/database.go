@@ -94,13 +94,13 @@ func RunMigrations(config *DatabaseConfig, migrationsRepo string) {
 
 	m, err := migrate.New(sourceURL, databaseURL)
 	if err != nil {
-		log.Error("migrate.New failed",
+		logger.Error("Failed to initialize migrations",
 			logconst.FieldCalledFunc, "migrate.New",
 			logconst.FieldError, err)
 		os.Exit(1)
 	}
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Error("Failed to apply migrations",
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		logger.Error("Failed to apply migrations",
 			logconst.FieldCalledObject, "Migrate",
 			logconst.FieldCalledMethod, "Up",
 			logconst.FieldError, err)

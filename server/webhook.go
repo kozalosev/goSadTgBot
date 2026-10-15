@@ -16,10 +16,13 @@ import (
 // AddHttpHandlerForWebhook uses [http.HandleFunc] to add a global route to the server.
 func AddHttpHandlerForWebhook(bot *tgbotapi.BotAPI, appParams *app.Params, wg *sync.WaitGroup) {
 	whParams := getWebhookParamsFromEnv()
-	path := fmt.Sprintf("/%s/%s", whParams.path, bot.Token)
-	whURL := fmt.Sprintf("https://%s:%s/%s%s", whParams.host, whParams.port, whParams.appPath, path)
-	log.Info(fmt.Sprintf("Webhook URL: %s/***", whURL[:len(bot.Token)]),
-		logconst.FieldFunc, "addHttpHandlerForWebhook")
+	pathPrefix := "/" + whParams.path + "/"
+	path := pathPrefix + bot.Token
+	urlPrefix := fmt.Sprintf("https://%s:%s/%s", whParams.host, whParams.port, whParams.appPath)
+	whURL := urlPrefix + path
+	log.Info("Webhook is registered",
+		logconst.FieldFunc, "addHttpHandlerForWebhook",
+		"url", urlPrefix+pathPrefix+"***")
 	wh, err := tgbotapi.NewWebhook(whURL)
 	if err != nil {
 		panic(err)

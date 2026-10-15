@@ -2,15 +2,15 @@ package wizard
 
 import (
 	"errors"
-	"fmt"
 	log "log/slog"
+
+	"slices"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/loctools/go-l10n/loc"
 	"github.com/thoas/go-funk"
-	"golang.org/x/exp/slices"
 )
 
 const ValidErrNotInListTr = "errors.validation.option.not.in.list"
@@ -55,9 +55,11 @@ func (fs Fields) FindField(name string) *Field {
 		return nil
 	}
 	if len(found) > 1 {
-		log.Warn(fmt.Sprintf("More than needed: %+v", found),
+		log.Warn("More than one field with the same name",
 			logconst.FieldObject, "Fields",
-			logconst.FieldCalledMethod, "FindField")
+			logconst.FieldCalledMethod, "FindField",
+			logconst.FieldName, name,
+			logconst.FieldFields, found)
 	}
 	return found[0]
 }

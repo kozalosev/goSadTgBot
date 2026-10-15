@@ -11,6 +11,10 @@ const (
 	FieldCalledObject = "calledObject"
 	FieldCalledMethod = "calledMethod"
 
+	FieldName    = "name"
+	FieldMessage = "message"
+	FieldFields  = "fields"
+
 	FieldError = "error"
 	FieldQuery = "query"
 )

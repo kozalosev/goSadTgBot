@@ -2,7 +2,6 @@
 package metrics
 
 import (
-	"fmt"
 	log "log/slog"
 	"net/http"
 	"reflect"
@@ -58,8 +57,9 @@ func Inc(name string) {
 	if ok {
 		counter.Inc()
 	} else {
-		log.Warn(fmt.Sprintf("Counter %s is missing", name),
-			logconst.FieldFunc, "Inc")
+		log.Warn("Counter is missing",
+			logconst.FieldFunc, "Inc",
+			logconst.FieldName, name)
 	}
 }
 

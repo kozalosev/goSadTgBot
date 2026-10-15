@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	log "log/slog"
 	"strings"
 	"sync"
@@ -109,7 +108,7 @@ func processCallbackQuery(appParams *Params, query *tgbotapi.CallbackQuery) {
 	if len(splitData) < 2 {
 		log.Warn("Unexpected callback",
 			logconst.FieldFunc, "processCallbackQuery",
-			logconst.FieldQuery, fmt.Sprintf("%+v", query))
+			logconst.FieldQuery, query)
 		return
 	}
 	prefix := splitData[0] + ":"

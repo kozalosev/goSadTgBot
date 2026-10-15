@@ -1,7 +1,6 @@
 package wizard
 
 import (
-	"fmt"
 	log "log/slog"
 
 	"github.com/kozalosev/goSadTgBot/logconst"
@@ -21,9 +20,11 @@ type SkipOnFieldValue struct {
 func (s SkipOnFieldValue) ShouldBeSkipped(form *Form) bool {
 	f := form.Fields.FindField(s.Name)
 	if f == nil {
-		log.Warn(fmt.Sprintf("Field '%s' was not found to check if '%s' should be skipped!", s.Name, form.Fields[form.Index].Name),
+		log.Warn("Field was not found to check if the current one should be skipped",
 			logconst.FieldObject, "SkipOnFieldValue",
-			logconst.FieldCalledMethod, "ShouldBeSkipped")
+			logconst.FieldCalledMethod, "ShouldBeSkipped",
+			logconst.FieldName, s.Name,
+			"currentField", form.Fields[form.Index].Name)
 		return false
 	}
 	txtData, ok := f.Data.(Txt)
