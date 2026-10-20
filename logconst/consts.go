@@ -12,6 +12,7 @@ const (
 	FieldCalledMethod = "calledMethod"
 
 	FieldName    = "name"
+	FieldValue   = "value"
 	FieldMessage = "message"
 	FieldFields  = "fields"
 

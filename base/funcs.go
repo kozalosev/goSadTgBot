@@ -86,7 +86,8 @@ func (bot *BotAPI) SetCommands(locpool *loc.Pool, langCodes []string, handlers [
 
 func (bot *BotAPI) ReplyWithMessageCustomizer(msg *tgbotapi.Message, text string, customizer MessageCustomizer) {
 	if len(text) == 0 {
-		log.Error("Empty reply for the message: "+msg.Text,
+		log.Error("Empty reply for the message",
+			logconst.FieldMessage, msg.Text,
 			logconst.FieldObject, "BotAPI",
 			logconst.FieldMethod, "ReplyWithMessageCustomizer")
 		return
@@ -127,9 +128,8 @@ func (bot *BotAPI) ReplyWithKeyboard(msg *tgbotapi.Message, text string, options
 }
 
 func (bot *BotAPI) ReplyWithInlineKeyboard(msg *tgbotapi.Message, text string, buttons []tgbotapi.InlineKeyboardButton) {
-	keyboard := tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(buttons...),
-	)
+	rows := chunkBy(buttons, buttonsPerRow)
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(rows...)
 	bot.ReplyWithMessageCustomizer(msg, text, func(msgConfig *tgbotapi.MessageConfig) {
 		msgConfig.ReplyMarkup = keyboard
 	})

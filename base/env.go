@@ -19,6 +19,11 @@ func init() {
 		logconst.LogFailToParseEnvironmentVariableWithContext(
 			log.With(logconst.FieldFunc, "init"),
 			"BUTTONS_PER_ROW", err)
+	} else if buttonsPerRowEnv < 1 {
+		log.Error("The environment variable must be positive",
+			logconst.FieldFunc, "init",
+			logconst.FieldConst, "BUTTONS_PER_ROW",
+			logconst.FieldValue, buttonsPerRowEnv)
 	} else {
 		buttonsPerRow = buttonsPerRowEnv
 	}
