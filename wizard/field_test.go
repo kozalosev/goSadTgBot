@@ -22,6 +22,72 @@ func TestFields_FindField(t *testing.T) {
 	assert.NotEqual(t, &tn2Field, res)
 }
 
+// restore simulates a round trip of the field through a StateStorage.
+func restore(t *testing.T, f *Field) *Field {
+	raw, err := json.Marshal(f)
+	assert.NoError(t, err)
+	var restored Field
+	assert.NoError(t, json.Unmarshal(raw, &restored))
+	return &restored
+}
+
+func TestGetData(t *testing.T) {
+	txt := Txt{Value: TestValue}
+	file := File{ID: "id", UniqueID: "uid", Caption: "caption"}
+	loc := LocData{Latitude: 1.5, Longitude: 2.5}
+
+	t.Run("direct", func(t *testing.T) {
+		val, ok := GetData[Txt](&Field{Data: txt})
+		assert.True(t, ok)
+		assert.Equal(t, txt, val)
+	})
+	t.Run("restored struct", func(t *testing.T) {
+		restoredTxt := restore(t, &Field{Data: txt})
+		assert.IsType(t, map[string]any{}, restoredTxt.Data)
+		val, ok := GetData[Txt](restoredTxt)
+		assert.True(t, ok)
+		assert.Equal(t, txt, val)
+
+		fileVal, ok := GetData[File](restore(t, &Field{Data: file}))
+		assert.True(t, ok)
+		assert.Equal(t, file, fileVal)
+
+		locVal, ok := GetData[LocData](restore(t, &Field{Data: loc}))
+		assert.True(t, ok)
+		assert.Equal(t, loc, locVal)
+	})
+	t.Run("restored number", func(t *testing.T) {
+		val, ok := GetData[int](restore(t, &Field{Data: 42}))
+		assert.True(t, ok)
+		assert.Equal(t, 42, val)
+	})
+	t.Run("type mismatch", func(t *testing.T) {
+		_, ok := GetData[Txt](&Field{Data: true})
+		assert.False(t, ok)
+		_, ok = GetData[int](&Field{Data: 1.5})
+		assert.False(t, ok)
+		_, ok = GetData[File](restore(t, &Field{Data: loc}))
+		assert.False(t, ok)
+	})
+	t.Run("empty", func(t *testing.T) {
+		_, ok := GetData[Txt](nil)
+		assert.False(t, ok)
+		_, ok = GetData[Txt](&Field{})
+		assert.False(t, ok)
+	})
+}
+
+func TestFieldData(t *testing.T) {
+	fields := Fields{&Field{Name: TestName, Data: Txt{Value: TestValue}}}
+
+	val, ok := FieldData[Txt](fields, TestName)
+	assert.True(t, ok)
+	assert.Equal(t, TestValue, val.Value)
+
+	_, ok = FieldData[Txt](fields, TestName2)
+	assert.False(t, ok)
+}
+
 func TestFields_FindField_MultipleItems(t *testing.T) {
 	tnField := Field{Name: TestName}
 	tn2Field := Field{Name: TestName}

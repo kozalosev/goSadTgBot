@@ -24,6 +24,6 @@ func TestRestoreExtractor(t *testing.T) {
 	assert.Equal(t, expectedAudio, f.extractor(audioMsg))
 }
 
-func getFuncPtr(f interface{}) uintptr {
+func getFuncPtr(f any) uintptr {
 	return reflect.ValueOf(f).Pointer()
 }

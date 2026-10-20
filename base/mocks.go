@@ -56,7 +56,7 @@ func (bot *FakeBotAPI) GetStandardAPI() *tgbotapi.BotAPI {
 }
 
 // GetOutput returns either a string after usage of Reply*() methods or a [tgbotapi.Chattable] after Request()
-func (bot *FakeBotAPI) GetOutput() interface{} {
+func (bot *FakeBotAPI) GetOutput() any {
 	switch bot.callType {
 	case message:
 		return bot.sentMessages

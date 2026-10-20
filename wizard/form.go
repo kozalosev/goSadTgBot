@@ -44,7 +44,7 @@ func (form *Form) AddEmptyField(name string, fieldType FieldType) {
 	form.Fields = append(form.Fields, field)
 }
 
-func (form *Form) AddPrefilledField(name string, value interface{}) {
+func (form *Form) AddPrefilledField(name string, value any) {
 	valStr, isValStr := value.(string)
 	if isValStr {
 		value = Txt{Value: valStr}
@@ -136,12 +136,13 @@ func (form *Form) PopulateRestored(msg *tgbotapi.Message, resources *Env) {
 }
 
 // FixDataTypes is mandatory for now to cast prefilled Data (Txt) and restored from Redis
-// (map[string]interface{}) to the unified Txt type.
+// (map[string]any) to the unified Txt type.
 // Call it before or after PopulateRestored().
+// It's not needed if the values are read with [GetData] or [FieldData], which convert values of any type.
 func (form *Form) FixDataTypes() {
 	for _, field := range form.Fields {
 		if field.Type == Text {
-			if data, ok := field.Data.(map[string]interface{}); ok {
+			if data, ok := field.Data.(map[string]any); ok {
 				if value, ok := data["Value"]; ok {
 					if value, ok := value.(string); ok {
 						field.Data = Txt{Value: value}
