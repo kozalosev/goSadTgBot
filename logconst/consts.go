@@ -1,4 +1,3 @@
-// Package logconst consists of constant values representing the fields in log messages.
 package logconst
 
 const (
@@ -11,4 +10,11 @@ const (
 	FieldCalledFunc   = "calledFunc"
 	FieldCalledObject = "calledObject"
 	FieldCalledMethod = "calledMethod"
+
+	FieldName    = "name"
+	FieldMessage = "message"
+	FieldFields  = "fields"
+
+	FieldError = "error"
+	FieldQuery = "query"
 )

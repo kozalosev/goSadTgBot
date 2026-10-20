@@ -2,6 +2,10 @@
 package metrics
 
 import (
+	log "log/slog"
+	"net/http"
+	"reflect"
+
 	"github.com/IBM/pgxpoolprometheus"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kozalosev/goSadTgBot/base"
@@ -9,9 +13,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
-	"net/http"
-	"reflect"
 )
 
 // ChosenInlineResultCounter is a counter which is registered automatically for ChosenInlineResult.
@@ -56,8 +57,9 @@ func Inc(name string) {
 	if ok {
 		counter.Inc()
 	} else {
-		log.WithField(logconst.FieldFunc, "Inc").
-			Warning("Counter " + name + " is missing!")
+		log.Warn("Counter is missing",
+			logconst.FieldFunc, "Inc",
+			logconst.FieldName, name)
 	}
 }
 

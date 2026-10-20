@@ -1,12 +1,13 @@
 package wizard
 
 import (
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	log "log/slog"
+
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/logconst"
-	log "github.com/sirupsen/logrus"
 )
 
-type fieldExtractor func(msg *tgbotapi.Message) interface{}
+type fieldExtractor func(msg *tgbotapi.Message) any
 
 // Txt is a structure for formatted text consisting of non-formatted text and 'entities'
 // https://core.telegram.org/bots/api#messageentity
@@ -31,60 +32,60 @@ type LocData struct {
 	Longitude float64
 }
 
-func nilExtractor(*tgbotapi.Message) interface{} { return nil }
-func textExtractor(m *tgbotapi.Message) interface{} {
+func nilExtractor(*tgbotapi.Message) any { return nil }
+func textExtractor(m *tgbotapi.Message) any {
 	return Txt{Value: m.Text, Entities: m.Entities}
 }
-func stickerExtractor(m *tgbotapi.Message) interface{} {
+func stickerExtractor(m *tgbotapi.Message) any {
 	if m.Sticker == nil {
 		return nil
 	}
 	return File{ID: m.Sticker.FileID, UniqueID: m.Sticker.FileUniqueID}
 }
-func voiceExtractor(m *tgbotapi.Message) interface{} {
+func voiceExtractor(m *tgbotapi.Message) any {
 	if m.Voice == nil {
 		return nil
 	}
 	return File{ID: m.Voice.FileID, UniqueID: m.Voice.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
 }
-func audioExtractor(m *tgbotapi.Message) interface{} {
+func audioExtractor(m *tgbotapi.Message) any {
 	if m.Audio == nil {
 		return nil
 	}
 	return File{ID: m.Audio.FileID, UniqueID: m.Audio.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
 }
-func videoExtractor(m *tgbotapi.Message) interface{} {
+func videoExtractor(m *tgbotapi.Message) any {
 	if m.Video == nil {
 		return nil
 	}
 	return File{ID: m.Video.FileID, UniqueID: m.Video.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
 }
-func videoNoteExtractor(m *tgbotapi.Message) interface{} {
+func videoNoteExtractor(m *tgbotapi.Message) any {
 	if m.VideoNote == nil {
 		return nil
 	}
 	return File{ID: m.VideoNote.FileID, UniqueID: m.VideoNote.FileUniqueID}
 }
-func gifExtractor(m *tgbotapi.Message) interface{} {
+func gifExtractor(m *tgbotapi.Message) any {
 	if m.Animation == nil {
 		return nil
 	}
 	return File{ID: m.Animation.FileID, UniqueID: m.Animation.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
 }
-func documentExtractor(m *tgbotapi.Message) interface{} {
+func documentExtractor(m *tgbotapi.Message) any {
 	if m.Document == nil {
 		return nil
 	}
 	return File{ID: m.Document.FileID, UniqueID: m.Document.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
 }
-func imageExtractor(m *tgbotapi.Message) interface{} {
+func imageExtractor(m *tgbotapi.Message) any {
 	if m.Photo == nil || len(m.Photo) == 0 {
 		return nil
 	}
 	photo := m.Photo[len(m.Photo)-1]
 	return File{ID: photo.FileID, UniqueID: photo.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
 }
-func locationExtractor(m *tgbotapi.Message) interface{} {
+func locationExtractor(m *tgbotapi.Message) any {
 	if m.Location == nil {
 		return nil
 	}
@@ -152,9 +153,11 @@ func (f *Field) restoreExtractor(msg *tgbotapi.Message) {
 	case Location:
 		f.extractor = locationExtractor
 	default:
-		log.WithField(logconst.FieldObject, "Field").
-			WithField(logconst.FieldCalledMethod, "restoreExtractor").
-			Warningf("No action was found for %+v", msg)
+		log.Warn("No extractor was found for the field type",
+			logconst.FieldObject, "Field",
+			logconst.FieldCalledMethod, "restoreExtractor",
+			logconst.FieldName, f.Name,
+			logconst.FieldMessage, msg)
 		f.extractor = nilExtractor
 	}
 }

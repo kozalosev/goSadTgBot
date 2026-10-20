@@ -1,8 +1,9 @@
 package wizard
 
 import (
+	log "log/slog"
+
 	"github.com/kozalosev/goSadTgBot/logconst"
-	log "github.com/sirupsen/logrus"
 )
 
 // SkipCondition is the condition type for [FieldDescriptor.SkipIf] field.
@@ -19,9 +20,11 @@ type SkipOnFieldValue struct {
 func (s SkipOnFieldValue) ShouldBeSkipped(form *Form) bool {
 	f := form.Fields.FindField(s.Name)
 	if f == nil {
-		log.WithField(logconst.FieldObject, "SkipOnFieldValue").
-			WithField(logconst.FieldCalledMethod, "ShouldBeSkipped").
-			Warningf("Field '%s' was not found to check if '%s' should be skipped!", s.Name, form.Fields[form.Index].Name)
+		log.Warn("Field was not found to check if the current one should be skipped",
+			logconst.FieldObject, "SkipOnFieldValue",
+			logconst.FieldCalledMethod, "ShouldBeSkipped",
+			logconst.FieldName, s.Name,
+			"currentField", form.Fields[form.Index].Name)
 		return false
 	}
 	txtData, ok := f.Data.(Txt)

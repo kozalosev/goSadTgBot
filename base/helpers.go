@@ -2,10 +2,12 @@ package base
 
 import (
 	"fmt"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
+	"slices"
+
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/loctools/go-l10n/loc"
 	"github.com/thoas/go-funk"
-	"golang.org/x/exp/slices"
 )
 
 func filterCommandsByScope(handlers []CommandHandler, scope CommandScope, lc *loc.Context) []tgbotapi.BotCommand {

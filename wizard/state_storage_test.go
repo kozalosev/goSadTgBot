@@ -3,12 +3,13 @@ package wizard
 import (
 	"context"
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"os"
-	"testing"
 )
 
 var formExample = Form{
@@ -94,7 +95,7 @@ func setup() {
 
 func shutDown() {
 	if err := container.Terminate(ctx); err != nil {
-		panic(fmt.Sprintf("failed to terminate container: %s", err.Error()))
+		panic(fmt.Sprintf("Failed to terminate container: %s", err.Error()))
 	}
 }
 

@@ -2,23 +2,27 @@ package server
 
 import (
 	"fmt"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/kozalosev/goSadTgBot/app"
-	"github.com/kozalosev/goSadTgBot/logconst"
-	log "github.com/sirupsen/logrus"
+	log "log/slog"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
+
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
+	"github.com/kozalosev/goSadTgBot/app"
+	"github.com/kozalosev/goSadTgBot/logconst"
 )
 
 // AddHttpHandlerForWebhook uses [http.HandleFunc] to add a global route to the server.
 func AddHttpHandlerForWebhook(bot *tgbotapi.BotAPI, appParams *app.Params, wg *sync.WaitGroup) {
 	whParams := getWebhookParamsFromEnv()
-	path := fmt.Sprintf("/%s/%s", whParams.path, bot.Token)
-	whURL := fmt.Sprintf("https://%s:%s/%s%s", whParams.host, whParams.port, whParams.appPath, path)
-	log.WithField(logconst.FieldFunc, "addHttpHandlerForWebhook").
-		Info("Webhook URL: ", whURL[:len(bot.Token)], "/***")
+	pathPrefix := "/" + whParams.path + "/"
+	path := pathPrefix + bot.Token
+	urlPrefix := fmt.Sprintf("https://%s:%s/%s", whParams.host, whParams.port, whParams.appPath)
+	whURL := urlPrefix + path
+	log.Info("Webhook is registered",
+		logconst.FieldFunc, "addHttpHandlerForWebhook",
+		"url", urlPrefix+pathPrefix+"***")
 	wh, err := tgbotapi.NewWebhook(whURL)
 	if err != nil {
 		panic(err)
@@ -29,10 +33,11 @@ func AddHttpHandlerForWebhook(bot *tgbotapi.BotAPI, appParams *app.Params, wg *s
 	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		upd, err := bot.HandleUpdate(r)
 		if err != nil {
-			log.WithField(logconst.FieldFunc, "addHttpHandlerForWebhook").
-				WithField(logconst.FieldCalledObject, "BotAPI").
-				WithField(logconst.FieldCalledMethod, "HandleUpdate").
-				Error(err)
+			log.Error("Failed to handle the update",
+				logconst.FieldFunc, "addHttpHandlerForWebhook",
+				logconst.FieldCalledObject, "BotAPI",
+				logconst.FieldCalledMethod, "HandleUpdate",
+				logconst.FieldError, err)
 		} else {
 			app.HandleUpdate(appParams, wg, upd)
 		}

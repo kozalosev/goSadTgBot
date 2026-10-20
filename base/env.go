@@ -1,19 +1,24 @@
 package base
 
 import (
-	"github.com/kozalosev/goSadTgBot/logconst"
-	log "github.com/sirupsen/logrus"
+	log "log/slog"
 	"os"
 	"strconv"
+
+	"github.com/kozalosev/goSadTgBot/logconst"
 )
 
 var buttonsPerRow = 6
 
 func init() {
-	if buttonsPerRowEnv, err := strconv.Atoi(os.Getenv("BUTTONS_PER_ROW")); err != nil {
-		log.WithField(logconst.FieldFunc, "init").
-			WithField(logconst.FieldConst, "BUTTONS_PER_ROW").
-			Error(err)
+	val, ok := os.LookupEnv("BUTTONS_PER_ROW")
+	if !ok {
+		return
+	}
+	if buttonsPerRowEnv, err := strconv.Atoi(val); err != nil {
+		logconst.LogFailToParseEnvironmentVariableWithContext(
+			log.With(logconst.FieldFunc, "init"),
+			"BUTTONS_PER_ROW", err)
 	} else {
 		buttonsPerRow = buttonsPerRowEnv
 	}
