@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -15,9 +16,15 @@ const (
 	noActiveWizardTr   = "wizard.active.not.set"
 )
 
+// ErrNoState is returned by [StateStorage.GetCurrentState] when there is no saved state for the user.
+// Implementations must return it (or an error wrapping it) so that callers can check it with [errors.Is]
+// without depending on a specific storage backend.
+var ErrNoState = errors.New("no state for the user")
+
 // StateStorage is an abstraction over the connection to some storage which provides methods for saving, restoring
 // and deletion of the states of the wizards.
 type StateStorage interface {
+	// GetCurrentState restores the state of the user into dest. Returns [ErrNoState] if there is no state.
 	GetCurrentState(uid int64, dest Wizard) error
 	SaveState(uid int64, wizard Wizard) error
 	DeleteState(uid int64) error
@@ -50,6 +57,10 @@ func ConnectToRedis(ctx context.Context, ttl time.Duration, options *redis.Optio
 
 func (rss RedisStateStorage) GetCurrentState(uid int64, dest Wizard) error {
 	cmd := rss.rdb.Get(rss.ctx, getRedisStateKey(uid))
+	if errors.Is(cmd.Err(), redis.Nil) {
+		// keep redis.Nil in the chain for backward compatibility with the clients checking it directly
+		return fmt.Errorf("%w: %w", ErrNoState, cmd.Err())
+	}
 	if cmd.Err() != nil {
 		return cmd.Err()
 	}
