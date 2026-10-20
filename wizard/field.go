@@ -1,8 +1,6 @@
 package wizard
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	log "log/slog"
 
@@ -36,11 +34,13 @@ const (
 	Gif       FieldType = "gif"
 	Document  FieldType = "document"
 	Location  FieldType = "location"
+	Integer   FieldType = "integer"
+	Boolean   FieldType = "boolean"
 )
 
 type Field struct {
 	Name         string    `json:"name"`
-	Data         any       `json:"data,omitempty"` // the value; use GetData or FieldData to read it in a type-safe way
+	Data         Value     `json:"data,omitempty"` // the value; use GetData to read it
 	WasRequested bool      `json:"wasRequested"`
 	Type         FieldType `json:"type"`
 
@@ -66,36 +66,18 @@ func (fs Fields) FindField(name string) *Field {
 	return found[0]
 }
 
-// GetData returns the value of the field as T. If the value was restored from a [StateStorage] and lost its type
-// (a map instead of a struct, float64 instead of int), it's converted to T. ok is false if the field is nil, empty,
-// or its value cannot be represented as T.
-func GetData[T any](f *Field) (value T, ok bool) {
-	if f == nil || f.Data == nil {
-		return value, false
-	}
-	if value, ok = f.Data.(T); ok {
-		return value, true
-	}
-
-	raw, err := json.Marshal(f.Data)
-	if err != nil {
-		return value, false
-	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	var decoded T
-	if err := decoder.Decode(&decoded); err != nil {
-		return value, false
-	}
-	return decoded, true
-}
-
-// FieldData is a shortcut for GetData(fs.FindField(name)).
+// GetData finds the field by name and returns its value as T. ok is false if the field doesn't exist, is empty,
+// or its value is of another type.
 // Example:
 //
-//	name, ok := wizard.FieldData[wizard.Txt](fields, FieldName)
-func FieldData[T any](fs Fields, name string) (T, bool) {
-	return GetData[T](fs.FindField(name))
+//	name, ok := wizard.GetData[wizard.Txt](fields, FieldName)
+func GetData[T Value](fs Fields, name string) (value T, ok bool) {
+	f := fs.FindField(name)
+	if f == nil {
+		return value, false
+	}
+	value, ok = f.Data.(T)
+	return
 }
 
 // Send a prompt message to the user.

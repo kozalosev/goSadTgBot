@@ -24,6 +24,17 @@ func TestRestoreExtractor(t *testing.T) {
 	assert.Equal(t, expectedAudio, f.extractor(audioMsg))
 }
 
+func TestIntegerExtractor(t *testing.T) {
+	assert.Equal(t, Int(42), integerExtractor(&tgbotapi.Message{Text: " 42 "}))
+	assert.Nil(t, integerExtractor(&tgbotapi.Message{Text: "4.2"}))
+}
+
+func TestBooleanExtractor(t *testing.T) {
+	assert.Equal(t, Bool(true), booleanExtractor(&tgbotapi.Message{Text: "true"}))
+	assert.Equal(t, Bool(false), booleanExtractor(&tgbotapi.Message{Text: "0"}))
+	assert.Nil(t, booleanExtractor(&tgbotapi.Message{Text: "yes"}))
+}
+
 func getFuncPtr(f any) uintptr {
 	return reflect.ValueOf(f).Pointer()
 }

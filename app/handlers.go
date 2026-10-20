@@ -64,7 +64,6 @@ func processMessage(appParams *Params, msg *tgbotapi.Message) {
 	if err == nil {
 		resources := wizard.NewEnv(appenv, appParams.StateStorage)
 		form.PopulateRestored(msg, resources)
-		form.FixDataTypes()
 		form.ProcessNextField(reqenv, msg)
 		return
 	}

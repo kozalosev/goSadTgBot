@@ -63,7 +63,6 @@ func CallbackQueryHandler(reqenv *base.RequestEnv, query *tgbotapi.CallbackQuery
 
 		msg := query.Message.ReplyToMessage
 		form.PopulateRestored(msg, resources)
-		form.FixDataTypes()
 		form.ProcessNextField(reqenv, msg)
 	}
 	if err := resources.appEnv.Bot.Request(c); err != nil {

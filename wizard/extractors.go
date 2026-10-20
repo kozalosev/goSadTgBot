@@ -2,12 +2,14 @@ package wizard
 
 import (
 	log "log/slog"
+	"strconv"
+	"strings"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/logconst"
 )
 
-type fieldExtractor func(msg *tgbotapi.Message) any
+type fieldExtractor func(msg *tgbotapi.Message) Value
 
 // Txt is a structure for formatted text consisting of non-formatted text and 'entities'
 // https://core.telegram.org/bots/api#messageentity
@@ -32,64 +34,106 @@ type LocData struct {
 	Longitude float64
 }
 
-func nilExtractor(*tgbotapi.Message) any { return nil }
-func textExtractor(m *tgbotapi.Message) any {
+// Int is an integer value. It may be used to prefill fields with IDs and other numbers.
+type Int int64
+
+// Bool is a boolean value.
+type Bool bool
+
+// Value is a value of a [Field]. It's implemented only by [Txt], [File], [LocData], [Int] and [Bool].
+type Value interface {
+	valueType() valueType
+}
+
+// valueType is saved along with the value to restore it from a [StateStorage] with the right type.
+type valueType string
+
+const (
+	txtValueType  valueType = "txt"
+	fileValueType valueType = "file"
+	locValueType  valueType = "location"
+	intValueType  valueType = "int"
+	boolValueType valueType = "bool"
+)
+
+func (Txt) valueType() valueType     { return txtValueType }
+func (File) valueType() valueType    { return fileValueType }
+func (LocData) valueType() valueType { return locValueType }
+func (Int) valueType() valueType     { return intValueType }
+func (Bool) valueType() valueType    { return boolValueType }
+
+func nilExtractor(*tgbotapi.Message) Value { return nil }
+func textExtractor(m *tgbotapi.Message) Value {
 	return Txt{Value: m.Text, Entities: m.Entities}
 }
-func stickerExtractor(m *tgbotapi.Message) any {
+func stickerExtractor(m *tgbotapi.Message) Value {
 	if m.Sticker == nil {
 		return nil
 	}
 	return File{ID: m.Sticker.FileID, UniqueID: m.Sticker.FileUniqueID}
 }
-func voiceExtractor(m *tgbotapi.Message) any {
+func voiceExtractor(m *tgbotapi.Message) Value {
 	if m.Voice == nil {
 		return nil
 	}
 	return File{ID: m.Voice.FileID, UniqueID: m.Voice.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
 }
-func audioExtractor(m *tgbotapi.Message) any {
+func audioExtractor(m *tgbotapi.Message) Value {
 	if m.Audio == nil {
 		return nil
 	}
 	return File{ID: m.Audio.FileID, UniqueID: m.Audio.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
 }
-func videoExtractor(m *tgbotapi.Message) any {
+func videoExtractor(m *tgbotapi.Message) Value {
 	if m.Video == nil {
 		return nil
 	}
 	return File{ID: m.Video.FileID, UniqueID: m.Video.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
 }
-func videoNoteExtractor(m *tgbotapi.Message) any {
+func videoNoteExtractor(m *tgbotapi.Message) Value {
 	if m.VideoNote == nil {
 		return nil
 	}
 	return File{ID: m.VideoNote.FileID, UniqueID: m.VideoNote.FileUniqueID}
 }
-func gifExtractor(m *tgbotapi.Message) any {
+func gifExtractor(m *tgbotapi.Message) Value {
 	if m.Animation == nil {
 		return nil
 	}
 	return File{ID: m.Animation.FileID, UniqueID: m.Animation.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
 }
-func documentExtractor(m *tgbotapi.Message) any {
+func documentExtractor(m *tgbotapi.Message) Value {
 	if m.Document == nil {
 		return nil
 	}
 	return File{ID: m.Document.FileID, UniqueID: m.Document.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
 }
-func imageExtractor(m *tgbotapi.Message) any {
+func imageExtractor(m *tgbotapi.Message) Value {
 	if m.Photo == nil || len(m.Photo) == 0 {
 		return nil
 	}
 	photo := m.Photo[len(m.Photo)-1]
 	return File{ID: photo.FileID, UniqueID: photo.FileUniqueID, Caption: m.Caption, Entities: m.CaptionEntities}
 }
-func locationExtractor(m *tgbotapi.Message) any {
+func locationExtractor(m *tgbotapi.Message) Value {
 	if m.Location == nil {
 		return nil
 	}
 	return LocData{Latitude: m.Location.Latitude, Longitude: m.Location.Longitude}
+}
+func integerExtractor(m *tgbotapi.Message) Value {
+	val, err := strconv.ParseInt(strings.TrimSpace(m.Text), 10, 64)
+	if err != nil {
+		return nil
+	}
+	return Int(val)
+}
+func booleanExtractor(m *tgbotapi.Message) Value {
+	val, err := strconv.ParseBool(strings.TrimSpace(m.Text))
+	if err != nil {
+		return nil
+	}
+	return Bool(val)
 }
 
 func determineMessageType(msg *tgbotapi.Message) FieldType {
@@ -152,6 +196,10 @@ func (f *Field) restoreExtractor(msg *tgbotapi.Message) {
 		f.extractor = documentExtractor
 	case Location:
 		f.extractor = locationExtractor
+	case Integer:
+		f.extractor = integerExtractor
+	case Boolean:
+		f.extractor = booleanExtractor
 	default:
 		log.Warn("No extractor was found for the field type",
 			logconst.FieldObject, "Field",

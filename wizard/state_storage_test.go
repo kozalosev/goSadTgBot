@@ -13,12 +13,22 @@ import (
 )
 
 var formExample = Form{
-	Fields: Fields{&Field{
-		Name:         "test",
-		Data:         "test",
-		WasRequested: true,
-		Type:         Text,
-	}},
+	Fields: Fields{
+		&Field{
+			Name:         "test",
+			Data:         Txt{Value: "test"},
+			WasRequested: true,
+			Type:         Text,
+		},
+		&Field{
+			Name: "id",
+			Data: Int(42),
+		},
+		&Field{
+			Name: "empty",
+			Type: Location,
+		},
+	},
 	WizardType: "TestWizard",
 }
 

@@ -24,7 +24,7 @@ func TestForm_AddEmptyField(t *testing.T) {
 
 func TestForm_AddPrefilledField(t *testing.T) {
 	wizard := NewWizard(testHandler{}, 1)
-	wizard.AddPrefilledField(TestName, TestValue)
+	wizard.AddPrefilledText(TestName, TestValue)
 
 	form := wizard.(*Form)
 	resField := form.Fields[0]
@@ -57,7 +57,7 @@ func TestForm_AddPrefilledAutoField(t *testing.T) {
 func TestForm_AllRequiredFieldsFilled(t *testing.T) {
 	wizard := NewWizard(testHandler{}, 1)
 	assert.False(t, wizard.AllRequiredFieldsFilled())
-	wizard.AddPrefilledField(TestName, TestValue)
+	wizard.AddPrefilledText(TestName, TestValue)
 	assert.True(t, wizard.AllRequiredFieldsFilled())
 }
 
@@ -90,7 +90,7 @@ func TestForm_ProcessNextField(t *testing.T) {
 	PopulateWizardDescriptors([]base.MessageHandler{handler})
 
 	wizard := NewWizard(handler, 3)
-	wizard.AddPrefilledField(TestName, TestValue)
+	wizard.AddPrefilledText(TestName, TestValue)
 	wizard.AddEmptyField(TestName2, Text)
 	wizard.AddEmptyField(TestName3, Text)
 	form := wizard.(*Form)

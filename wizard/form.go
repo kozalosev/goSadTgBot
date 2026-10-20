@@ -44,15 +44,13 @@ func (form *Form) AddEmptyField(name string, fieldType FieldType) {
 	form.Fields = append(form.Fields, field)
 }
 
-func (form *Form) AddPrefilledField(name string, value any) {
-	valStr, isValStr := value.(string)
-	if isValStr {
-		value = Txt{Value: valStr}
-	}
+func (form *Form) AddPrefilledField(name string, value Value) {
 	field := &Field{Name: name, Data: value, Form: form}
-	if isValStr {
-		field.Type = Text
-	}
+	form.Fields = append(form.Fields, field)
+}
+
+func (form *Form) AddPrefilledText(name string, value string) {
+	field := &Field{Name: name, Data: Txt{Value: value}, Type: Text, Form: form}
 	form.Fields = append(form.Fields, field)
 }
 
@@ -101,10 +99,9 @@ start:
 		currentField.Data = value
 		form.Index++
 		goto start
-	} else {
-		currentField.askUser(reqenv, msg)
-		currentField.WasRequested = true
 	}
+	currentField.askUser(reqenv, msg)
+	currentField.WasRequested = true
 
 	if err := form.resources.stateStorage.SaveState(msg.From.ID, form); err != nil {
 		log.Error("Failed to save the state of a wizard",
@@ -135,24 +132,6 @@ func (form *Form) PopulateRestored(msg *tgbotapi.Message, resources *Env) {
 	}
 }
 
-// FixDataTypes is mandatory for now to cast prefilled Data (Txt) and restored from Redis
-// (map[string]any) to the unified Txt type.
-// Call it before or after PopulateRestored().
-// It's not needed if the values are read with [GetData] or [FieldData], which convert values of any type.
-func (form *Form) FixDataTypes() {
-	for _, field := range form.Fields {
-		if field.Type == Text {
-			if data, ok := field.Data.(map[string]any); ok {
-				if value, ok := data["Value"]; ok {
-					if value, ok := value.(string); ok {
-						field.Data = Txt{Value: value}
-					}
-				}
-			}
-		}
-	}
-}
-
 // NewWizard is a constructor for [Wizard].
 // The fields parameter is used only for array initialization.
 func NewWizard(handler WizardMessageHandler, fields int) Wizard {
@@ -176,9 +155,8 @@ func shouldBeSkipped(field *Field, form *Form) bool {
 	skipPredicate := field.descriptor.SkipIf
 	if skipPredicate == nil {
 		return false
-	} else {
-		return skipPredicate.ShouldBeSkipped(form)
 	}
+	return skipPredicate.ShouldBeSkipped(form)
 }
 
 // SomeHandler -> SomeWizard
