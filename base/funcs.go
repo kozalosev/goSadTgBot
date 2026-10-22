@@ -93,8 +93,7 @@ func (bot *BotAPI) ReplyWithMessageCustomizer(msg *tgbotapi.Message, text string
 		return
 	}
 
-	reply := tgbotapi.NewMessage(msg.Chat.ID, text)
-	reply.ReplyParameters.MessageID = msg.MessageID
+	reply := newReply(msg, text)
 	customizer(&reply)
 	if _, err := bot.internal.Send(reply); err != nil {
 		log.Error("Failed to send a reply",
@@ -146,6 +145,25 @@ func (bot *BotAPI) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
 	return bot.internal.Send(c)
 }
 
+// AnswerGuestQuery is a simple wrapper around [tgbotapi.BotAPI.AnswerGuestQuery].
+func (bot *BotAPI) AnswerGuestQuery(config tgbotapi.AnswerGuestQueryConfig) (tgbotapi.SentGuestMessage, error) {
+	return bot.internal.AnswerGuestQuery(config)
+}
+
 func (bot *BotAPI) GetStandardAPI() *tgbotapi.BotAPI {
 	return bot.internal
+}
+
+// newReply creates a reply to the message. If the message is ephemeral (a command marked with
+// [tgbotapi.BotCommand.IsEphemeral] was used in a group), the reply is ephemeral too and visible only to the sender.
+// Such a reply must be sent within 15 seconds after the command.
+func newReply(msg *tgbotapi.Message, text string) tgbotapi.MessageConfig {
+	reply := tgbotapi.NewMessage(msg.Chat.ID, text)
+	if msg.EphemeralMessageID != 0 && msg.From != nil {
+		reply.ReplyParameters.EphemeralMessageID = msg.EphemeralMessageID
+		reply.EphemeralMessageParameters = tgbotapi.EphemeralMessageParameters{ReceiverUserID: msg.From.ID}
+	} else {
+		reply.ReplyParameters.MessageID = msg.MessageID
+	}
+	return reply
 }

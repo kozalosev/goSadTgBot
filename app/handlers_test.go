@@ -3,6 +3,7 @@ package app
 import (
 	"slices"
 	"testing"
+	"time"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
@@ -62,6 +63,17 @@ func TestAnswerGuestMessage(t *testing.T) {
 
 		assert.False(t, handler.called)
 		assert.Empty(t, requests)
+	})
+
+	t.Run("placeholder result is unwrapped", func(t *testing.T) {
+		result := tgbotapi.NewInlineQueryResultArticle("id", "title", "text")
+		handler := &fakeGuestHandler{text: "foo", result: base.PlaceholderGuestResult{Result: result, After: time.Hour, Placeholder: "·"}}
+
+		requests := answerGuestMessageForTest(t, []base.GuestHandler{handler}, newGuestMessage("foo"))
+		assert.Len(t, requests, 1)
+		answer, ok := requests[0].(tgbotapi.AnswerGuestQueryConfig)
+		assert.True(t, ok)
+		assert.Equal(t, result, answer.Result, "the wrapper must not be sent to Telegram")
 	})
 }
 

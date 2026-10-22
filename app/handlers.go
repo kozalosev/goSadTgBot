@@ -10,6 +10,7 @@ import (
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/kozalosev/goSadTgBot/metrics"
+	"github.com/kozalosev/goSadTgBot/selfdestruct"
 	"github.com/kozalosev/goSadTgBot/wizard"
 )
 
@@ -183,11 +184,20 @@ func answerGuestMessage(appenv *base.ApplicationEnv, reqenv *base.RequestEnv, ha
 		result = tgbotapi.NewInlineQueryResultArticle(defaultGuestResultID, text, text)
 	}
 
-	if err := appenv.Bot.Request(tgbotapi.NewAnswerGuestQuery(msg.GuestQueryID, result)); err != nil {
+	placeholderResult, hasPlaceholder := result.(base.PlaceholderGuestResult)
+	if hasPlaceholder {
+		result = placeholderResult.Result
+	}
+	sent, err := appenv.Bot.AnswerGuestQuery(tgbotapi.NewAnswerGuestQuery(msg.GuestQueryID, result))
+	if err != nil {
 		log.Error("Failed to answer the guest query",
 			logconst.FieldFunc, "answerGuestMessage",
 			logconst.FieldCalledMethod, "AnswerGuestQuery",
 			logconst.FieldError, err)
+		return
+	}
+	if hasPlaceholder {
+		selfdestruct.ReplaceInline(appenv.Bot, sent.InlineMessageID, placeholderResult.Placeholder, placeholderResult.After)
 	}
 }
 

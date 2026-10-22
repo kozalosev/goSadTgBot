@@ -20,8 +20,15 @@ func filterCommandsByScope(handlers []CommandHandler, scope CommandScope, lc *lo
 		return tgbotapi.BotCommand{
 			Command:     mainCmd,
 			Description: description,
+			IsEphemeral: isEphemeralCommand(h, scope),
 		}
 	}).([]tgbotapi.BotCommand)
+}
+
+// isEphemeralCommand is true only for group chats since ephemeral messages are not supported in private ones.
+func isEphemeralCommand(handler CommandHandler, scope CommandScope) bool {
+	h, ok := handler.(EphemeralCommandHandler)
+	return ok && h.IsEphemeral() && scope != CommandScopeAllPrivateChats
 }
 
 // https://stackoverflow.com/a/72408490

@@ -3,6 +3,7 @@ package base
 
 import (
 	"context"
+	"time"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -42,6 +43,15 @@ type CommandHandler interface {
 	GetScopes() []CommandScope
 }
 
+// EphemeralCommandHandler is a [CommandHandler] whose command is registered as ephemeral in group chats: its messages
+// and the replies to them are visible only to the sender and the bot.
+// The reply must be sent within 15 seconds; [BotAPI.ReplyWithMessageCustomizer] does it automatically.
+type EphemeralCommandHandler interface {
+	CommandHandler
+
+	IsEphemeral() bool
+}
+
 // InlineHandler is a handler for the [tgbotapi.InlineQuery] update type.
 type InlineHandler interface {
 	CanHandle(reqenv *RequestEnv, query *tgbotapi.InlineQuery) bool
@@ -61,6 +71,15 @@ type CallbackHandler interface {
 type GuestHandler interface {
 	CanHandle(reqenv *RequestEnv, msg *tgbotapi.Message) bool
 	Handle(reqenv *RequestEnv, msg *tgbotapi.Message) tgbotapi.InlineQueryResult
+}
+
+// PlaceholderGuestResult is the result of a [GuestHandler] whose text must be replaced with the placeholder some time
+// after it has been sent. A message sent in response to a guest query can't be deleted by the bot since it isn't
+// a member of the chat, but it can be edited by the inline_message_id. See the selfdestruct package.
+type PlaceholderGuestResult struct {
+	Result      tgbotapi.InlineQueryResult
+	After       time.Duration
+	Placeholder string
 }
 
 // MessageCustomizer is a function that can change the message before it will be sent to Telegram.
@@ -91,6 +110,9 @@ type ExtendedBotAPI interface {
 	Request(tgbotapi.Chattable) error
 	// Send is like the Request method but returns the sent message back with non-empty ID field.
 	Send(tgbotapi.Chattable) (tgbotapi.Message, error)
+	// AnswerGuestQuery answers a guest query and returns the identifier of the sent inline message.
+	// https://core.telegram.org/bots/api#answerguestquery
+	AnswerGuestQuery(config tgbotapi.AnswerGuestQueryConfig) (tgbotapi.SentGuestMessage, error)
 	// GetStandardAPI lets you use all standard methods of the library.
 	GetStandardAPI() *tgbotapi.BotAPI
 }
