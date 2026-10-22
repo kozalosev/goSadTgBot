@@ -11,9 +11,9 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/loctools/go-l10n v0.0.0-20191031185225-4f8f121cf651
 	github.com/prometheus/client_golang v1.25.0
+	github.com/samber/lo v1.52.0
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
-	github.com/thoas/go-funk v0.9.3
 )
 
 require (

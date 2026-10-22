@@ -9,7 +9,7 @@ import (
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/kozalosev/goSadTgBot/settings"
 	"github.com/loctools/go-l10n/loc"
-	"github.com/thoas/go-funk"
+	"github.com/samber/lo"
 )
 
 const cmdTrTemplate = "commands.%s.description"
@@ -114,9 +114,9 @@ func (bot *BotAPI) ReplyWithMarkdown(msg *tgbotapi.Message, text string) {
 }
 
 func (bot *BotAPI) ReplyWithKeyboard(msg *tgbotapi.Message, text string, options []string) {
-	buttons := funk.Map(options, func(s string) tgbotapi.KeyboardButton {
+	buttons := lo.Map(options, func(s string, _ int) tgbotapi.KeyboardButton {
 		return tgbotapi.NewKeyboardButton(s)
-	}).([]tgbotapi.KeyboardButton)
+	})
 	rows := chunkBy(buttons, buttonsPerRow)
 	keyboard := tgbotapi.NewOneTimeReplyKeyboard(rows...)
 	keyboard.ResizeKeyboard = true
