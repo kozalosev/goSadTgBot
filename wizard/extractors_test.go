@@ -38,3 +38,28 @@ func TestBooleanExtractor(t *testing.T) {
 func getFuncPtr(f any) uintptr {
 	return reflect.ValueOf(f).Pointer()
 }
+
+func TestNewAutoField(t *testing.T) {
+	entities := []tgbotapi.MessageEntity{{Type: "bold", Length: 4}}
+
+	txt := NewAutoField(TestName, &tgbotapi.Message{Text: TestValue, Entities: entities})
+	assert.Equal(t, TestName, txt.Name)
+	assert.Equal(t, Text, txt.Type)
+	assert.Equal(t, Txt{Value: TestValue, Entities: entities}, txt.Data)
+	assert.Nil(t, txt.Form)
+
+	sticker := NewAutoField(TestName, &tgbotapi.Message{Sticker: &tgbotapi.Sticker{FileID: TestFileID, FileUniqueID: TestFileUniqueID}})
+	assert.Equal(t, Sticker, sticker.Type)
+	assert.Equal(t, File{ID: TestFileID, UniqueID: TestFileUniqueID}, sticker.Data)
+
+	photo := NewAutoField(TestName, &tgbotapi.Message{
+		Photo:   []tgbotapi.PhotoSize{{FileID: "small", FileUniqueID: "smallU"}, {FileID: TestFileID, FileUniqueID: TestFileUniqueID}},
+		Caption: TestValue,
+	})
+	assert.Equal(t, Image, photo.Type)
+	assert.Equal(t, File{ID: TestFileID, UniqueID: TestFileUniqueID, Caption: TestValue}, photo.Data)
+
+	location := NewAutoField(TestName, &tgbotapi.Message{Location: &tgbotapi.Location{Latitude: 1.5, Longitude: 2.5}})
+	assert.Equal(t, Location, location.Type)
+	assert.Equal(t, LocData{Latitude: 1.5, Longitude: 2.5}, location.Data)
+}
