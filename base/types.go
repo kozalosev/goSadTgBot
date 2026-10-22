@@ -54,6 +54,15 @@ type CallbackHandler interface {
 	Handle(reqenv *RequestEnv, query *tgbotapi.CallbackQuery)
 }
 
+// GuestHandler is a handler for the guest_message update type, which is sent when the bot is mentioned in a chat it's
+// not a member of. A guest query can be answered only once, so the handler returns the result instead of sending it.
+// Return nil if there is nothing to answer.
+// https://core.telegram.org/bots/api#answerguestquery
+type GuestHandler interface {
+	CanHandle(reqenv *RequestEnv, msg *tgbotapi.Message) bool
+	Handle(reqenv *RequestEnv, msg *tgbotapi.Message) tgbotapi.InlineQueryResult
+}
+
 // MessageCustomizer is a function that can change the message before it will be sent to Telegram.
 // See [BotAPI.ReplyWithMessageCustomizer] for more information.
 type MessageCustomizer func(msgConfig *tgbotapi.MessageConfig)
