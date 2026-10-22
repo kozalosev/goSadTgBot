@@ -6,7 +6,7 @@ To add a form to your [github.com/kozalosev/goSadTgBot/base.MessageHandler], it 
 interface and create a [Wizard] in its [github.com/kozalosev/goSadTgBot/base.MessageHandler.Handle] method.
 
 Values of fields implement the [Value] interface and keep their types when restored from a [StateStorage].
-Read them with [GetData].
+Read them with [GetData], or with [GetText] for text values.
 
 # Migration from v0.4
 

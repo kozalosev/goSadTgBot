@@ -80,6 +80,16 @@ func GetData[T Value](fs Fields, name string) (value T, ok bool) {
 	return
 }
 
+// GetText is a shortcut for [GetData] with [Txt] values. It returns an empty string if there is no field with
+// such name, or its value is empty or not a text.
+// Example:
+//
+//	name := wizard.GetText(fields, FieldName)
+func GetText(fs Fields, name string) string {
+	txt, _ := GetData[Txt](fs, name)
+	return txt.Value
+}
+
 // Send a prompt message to the user.
 func (f *Field) askUser(reqenv *base.RequestEnv, msg *tgbotapi.Message) {
 	promptDescription := reqenv.Lang.Tr(f.descriptor.promptDescription)

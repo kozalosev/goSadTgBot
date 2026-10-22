@@ -75,6 +75,17 @@ func TestGetData(t *testing.T) {
 	})
 }
 
+func TestGetText(t *testing.T) {
+	fields := Fields{
+		&Field{Name: TestName, Data: Txt{Value: TestValue}},
+		&Field{Name: TestName2, Data: Int(42)},
+	}
+
+	assert.Equal(t, TestValue, GetText(fields, TestName))
+	assert.Empty(t, GetText(fields, TestName2))
+	assert.Empty(t, GetText(fields, "missing"))
+}
+
 func TestField_validate(t *testing.T) {
 	reqenv := &base.RequestEnv{
 		Lang: loc.NewPool("en").GetContext("en"),
