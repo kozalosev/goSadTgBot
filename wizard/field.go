@@ -10,7 +10,7 @@ import (
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/loctools/go-l10n/loc"
-	"github.com/thoas/go-funk"
+	"github.com/samber/lo"
 )
 
 const ValidErrNotInListTr = "errors.validation.option.not.in.list"
@@ -52,7 +52,7 @@ type Field struct {
 
 // FindField is useful in a [FormAction] function to get values of the fields.
 func (fs Fields) FindField(name string) *Field {
-	found := funk.Filter(fs, func(f *Field) bool { return f.Name == name }).([]*Field)
+	found := lo.Filter(fs, func(f *Field, _ int) bool { return f.Name == name })
 	if len(found) == 0 {
 		return nil
 	}
@@ -80,6 +80,16 @@ func GetData[T Value](fs Fields, name string) (value T, ok bool) {
 	return
 }
 
+// GetText is a shortcut for [GetData] with [Txt] values. It returns an empty string if there is no field with
+// such name, or its value is empty or not a text.
+// Example:
+//
+//	name := wizard.GetText(fields, FieldName)
+func GetText(fs Fields, name string) string {
+	txt, _ := GetData[Txt](fs, name)
+	return txt.Value
+}
+
 // Send a prompt message to the user.
 func (f *Field) askUser(reqenv *base.RequestEnv, msg *tgbotapi.Message) {
 	promptDescription := reqenv.Lang.Tr(f.descriptor.promptDescription)
@@ -90,7 +100,7 @@ func (f *Field) askUser(reqenv *base.RequestEnv, msg *tgbotapi.Message) {
 		inlineKeyboardAnswers = f.descriptor.InlineKeyboardBuilder(reqenv, msg, f.Form)
 	}
 	if len(inlineKeyboardAnswers) > 0 {
-		inlineAnswers := funk.Map(inlineKeyboardAnswers, func(s string) tgbotapi.InlineKeyboardButton {
+		inlineAnswers := lo.Map(inlineKeyboardAnswers, func(s string, _ int) tgbotapi.InlineKeyboardButton {
 			btn := tgbotapi.InlineKeyboardButton{Text: reqenv.Lang.Tr(s)}
 			if customizer, ok := f.descriptor.inlineButtonCustomizers[s]; ok {
 				customizer(&btn, f)
@@ -99,7 +109,7 @@ func (f *Field) askUser(reqenv *base.RequestEnv, msg *tgbotapi.Message) {
 				btn.CallbackData = &data
 			}
 			return btn
-		}).([]tgbotapi.InlineKeyboardButton)
+		})
 		f.Form.resources.appEnv.Bot.ReplyWithInlineKeyboard(msg, promptDescription, inlineAnswers)
 	} else if f.descriptor.ReplyKeyboardBuilder != nil {
 		f.Form.resources.appEnv.Bot.ReplyWithKeyboard(msg, promptDescription, f.descriptor.ReplyKeyboardBuilder(reqenv, msg))
@@ -126,7 +136,7 @@ func (f *Field) validate(reqenv *base.RequestEnv, msg *tgbotapi.Message) error {
 }
 
 func translateList(arr []string, lc *loc.Context) []string {
-	return funk.Map(arr, func(s string) string {
+	return lo.Map(arr, func(s string, _ int) string {
 		return lc.Tr(s)
-	}).([]string)
+	})
 }

@@ -7,21 +7,28 @@ import (
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/loctools/go-l10n/loc"
-	"github.com/thoas/go-funk"
+	"github.com/samber/lo"
 )
 
 func filterCommandsByScope(handlers []CommandHandler, scope CommandScope, lc *loc.Context) []tgbotapi.BotCommand {
-	privateChatCommands := funk.Filter(handlers, func(h CommandHandler) bool {
+	privateChatCommands := lo.Filter(handlers, func(h CommandHandler, _ int) bool {
 		return slices.Contains(h.GetScopes(), scope)
-	}).([]CommandHandler)
-	return funk.Map(privateChatCommands, func(h CommandHandler) tgbotapi.BotCommand {
+	})
+	return lo.Map(privateChatCommands, func(h CommandHandler, _ int) tgbotapi.BotCommand {
 		mainCmd := h.GetCommands()[0]
 		description := lc.Tr(fmt.Sprintf(cmdTrTemplate, mainCmd))
 		return tgbotapi.BotCommand{
 			Command:     mainCmd,
 			Description: description,
+			IsEphemeral: isEphemeralCommand(h, scope),
 		}
-	}).([]tgbotapi.BotCommand)
+	})
+}
+
+// isEphemeralCommand is true only for group chats since ephemeral messages are not supported in private ones.
+func isEphemeralCommand(handler CommandHandler, scope CommandScope) bool {
+	h, ok := handler.(EphemeralCommandHandler)
+	return ok && h.IsEphemeral() && scope != CommandScopeAllPrivateChats
 }
 
 // https://stackoverflow.com/a/72408490

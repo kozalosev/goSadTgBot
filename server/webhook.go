@@ -27,6 +27,7 @@ func AddHttpHandlerForWebhook(bot *tgbotapi.BotAPI, appParams *app.Params, wg *s
 	if err != nil {
 		panic(err)
 	}
+	wh.AllowedUpdates = app.AllowedUpdates(appParams)
 	if _, err := bot.Request(wh); err != nil {
 		panic(err)
 	}

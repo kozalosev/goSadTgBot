@@ -12,6 +12,9 @@ const (
 	request
 )
 
+// FakeInlineMessageID is returned by [FakeBotAPI.AnswerGuestQuery].
+const FakeInlineMessageID = "fake-inline-message-id"
+
 // FakeBotAPI is a mock for the [BotAPI] struct.
 // Use the GetOutput() method to get either the text of the sent message, or the request itself.
 type FakeBotAPI struct {
@@ -49,6 +52,12 @@ func (bot *FakeBotAPI) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
 	bot.callType = request
 	bot.sentRequests = append(bot.sentRequests, c)
 	return tgbotapi.Message{}, nil
+}
+
+func (bot *FakeBotAPI) AnswerGuestQuery(c tgbotapi.AnswerGuestQueryConfig) (tgbotapi.SentGuestMessage, error) {
+	bot.callType = request
+	bot.sentRequests = append(bot.sentRequests, c)
+	return tgbotapi.SentGuestMessage{InlineMessageID: FakeInlineMessageID}, nil
 }
 
 func (bot *FakeBotAPI) GetStandardAPI() *tgbotapi.BotAPI {

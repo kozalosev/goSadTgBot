@@ -62,6 +62,16 @@ func (LocData) valueType() valueType { return locValueType }
 func (Int) valueType() valueType     { return intValueType }
 func (Bool) valueType() valueType    { return boolValueType }
 
+// NewAutoField creates a field filled with the value extracted from the message. Its type is resolved from the content
+// of the message in the same way as for the [Auto] fields of the forms. It is intended for one-off extraction outside
+// of a form, for example in the handlers that can't run a dialog (guest messages, replies, etc.). Data of the field
+// is nil if the value couldn't be extracted.
+func NewAutoField(name string, msg *tgbotapi.Message) *Field {
+	field := &Field{Name: name, Type: Auto}
+	field.fillFrom(msg)
+	return field
+}
+
 func nilExtractor(*tgbotapi.Message) Value { return nil }
 func textExtractor(m *tgbotapi.Message) Value {
 	return Txt{Value: m.Text, Entities: m.Entities}
@@ -208,4 +218,10 @@ func (f *Field) restoreExtractor(msg *tgbotapi.Message) {
 			logconst.FieldMessage, msg)
 		f.extractor = nilExtractor
 	}
+}
+
+// fillFrom determines the type of the field if it is [Auto] and extracts its value from the message.
+func (f *Field) fillFrom(msg *tgbotapi.Message) {
+	f.restoreExtractor(msg)
+	f.Data = f.extractor(msg)
 }

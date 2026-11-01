@@ -5,7 +5,7 @@ import (
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
-	"github.com/thoas/go-funk"
+	"github.com/samber/lo"
 )
 
 // InlineButtonCustomizer is a function that allows you to customize the inline button generated for a field prompt.
@@ -84,15 +84,14 @@ func PopulateWizardDescriptors(handlers []base.MessageHandler) bool {
 		return false
 	}
 
-	filteredHandlers := funk.Filter(handlers, func(h base.MessageHandler) bool {
-		_, ok := h.(WizardMessageHandler)
-		return ok
-	}).([]base.MessageHandler)
-	wizardHandlers := funk.Map(filteredHandlers, func(wh base.MessageHandler) WizardMessageHandler { return wh.(WizardMessageHandler) })
+	wizardHandlers := lo.FilterMap(handlers, func(h base.MessageHandler, _ int) (WizardMessageHandler, bool) {
+		wh, ok := h.(WizardMessageHandler)
+		return wh, ok
+	})
 
-	descriptorsMap := funk.Map(wizardHandlers, func(wh WizardMessageHandler) (string, *FormDescriptor) {
+	descriptorsMap := lo.SliceToMap(wizardHandlers, func(wh WizardMessageHandler) (string, *FormDescriptor) {
 		return getWizardName(wh), wh.GetWizardDescriptor()
-	}).(map[string]*FormDescriptor)
+	})
 
 	registeredWizardDescriptors = descriptorsMap
 	return true
@@ -102,16 +101,14 @@ func (descriptor *FormDescriptor) findFieldDescriptor(name string) *FieldDescrip
 	fieldDesc, ok := descriptor.fields[name]
 	if ok {
 		return fieldDesc
-	} else {
-		panic(fmt.Sprintf("No descriptor was found for field '%s'", name))
 	}
+	panic(fmt.Sprintf("No descriptor was found for field '%s'", name))
 }
 
 func findFormDescriptor(name string) *FormDescriptor {
 	desc, ok := registeredWizardDescriptors[name]
 	if ok {
 		return desc
-	} else {
-		return nil
 	}
+	return nil
 }

@@ -51,6 +51,18 @@ func IncInlineHandlerCounter(handler base.InlineHandler) {
 	Inc(resolveHandlerName(handler))
 }
 
+// RegisterGuestHandlerCounters following the scheme: "used_guest_handler_%s".
+func RegisterGuestHandlerCounters(handlers ...base.GuestHandler) {
+	for _, h := range handlers {
+		registerCounter(resolveHandlerName(h), "used_guest_handler_")
+	}
+}
+
+// IncGuestHandlerCounter increments the counter registered for a guest message handler.
+func IncGuestHandlerCounter(handler base.GuestHandler) {
+	Inc(resolveHandlerName(handler))
+}
+
 // Inc increments the counter registered as 'name'.
 func Inc(name string) {
 	counter, ok := handlerCounters[handlerName(name)]
@@ -78,9 +90,8 @@ func resolveHandlerName(handler any) string {
 	t := reflect.TypeOf(handler)
 	if t.Kind() == reflect.Pointer {
 		return reflect.Indirect(reflect.ValueOf(handler)).Type().Name()
-	} else {
-		return t.Name()
 	}
+	return t.Name()
 }
 
 func registerCounter(name, metricPrefix string) {

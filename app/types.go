@@ -17,6 +17,7 @@ type Params struct {
 	MessageHandlers  []base.MessageHandler
 	InlineHandlers   []base.InlineHandler
 	CallbackHandlers []base.CallbackHandler
+	GuestHandlers    []base.GuestHandler
 	Settings         settings.OptionsFetcher
 	LangPool         *loc.Pool
 	API              *base.BotAPI

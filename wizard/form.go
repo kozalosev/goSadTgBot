@@ -57,8 +57,7 @@ func (form *Form) AddPrefilledText(name string, value string) {
 func (form *Form) AddPrefilledAutoField(name string, msg *tgbotapi.Message) {
 	form.AddEmptyField(name, Auto)
 	field := form.Fields.FindField(name)
-	field.restoreExtractor(msg)
-	field.Data = field.extractor(msg)
+	field.fillFrom(msg)
 }
 
 func (form *Form) AllRequiredFieldsFilled() bool {
