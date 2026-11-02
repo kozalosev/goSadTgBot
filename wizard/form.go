@@ -4,13 +4,11 @@ import (
 	log "log/slog"
 	"reflect"
 	"strings"
-	"time"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
 	"github.com/kozalosev/goSadTgBot/metrics"
-	"github.com/kozalosev/goSadTgBot/selfdestruct"
 )
 
 // localization keys
@@ -92,7 +90,7 @@ start:
 	currentField := form.Fields[form.Index]
 	if currentField.WasRequested {
 		value := currentField.extractor(msg)
-		form.deleteAnswer(msg)
+		form.handleAnswer(msg)
 		if value == nil {
 			text := reqenv.Lang.Tr(InvalidFieldValueTypeErrorTr) + reqenv.Lang.Tr(string(currentField.Type))
 			form.reply(msg, text, base.NoOpCustomizer)
@@ -163,42 +161,6 @@ func NewEnv(appEnv *base.ApplicationEnv, stateStorage StateStorage) *Env {
 		appEnv:       appEnv,
 		stateStorage: stateStorage,
 	}
-}
-
-// selfDestructionDelayInGroups is how long the questions of the wizard and the answers to them live in group chats.
-var selfDestructionDelayInGroups time.Duration
-
-// SetSelfDestructionDelayInGroups makes the questions of the wizards and the answers of the users to them disappear
-// from group chats after the delay, so that filling a form doesn't litter the chat. Zero disables it. The answers of
-// the users are deleted only if the bot has the right to delete messages in the group.
-func SetSelfDestructionDelayInGroups(delay time.Duration) {
-	selfDestructionDelayInGroups = delay
-}
-
-// reply sends the text of the wizard in reply to the message: with ForceReply and self-destroying in group chats.
-func (form *Form) reply(msg *tgbotapi.Message, text string, customizer base.MessageCustomizer) {
-	customizer = replyCustomizer(msg, customizer)
-	if !shouldSelfDestruct(msg) {
-		form.resources.appEnv.Bot.ReplyWithMessageCustomizer(msg, text, customizer)
-		return
-	}
-	reply := tgbotapi.NewMessage(msg.Chat.ID, text)
-	reply.ReplyParameters.MessageID = msg.MessageID
-	customizer(&reply)
-	selfdestruct.SendAndDelete(form.resources.appEnv.Bot, reply, selfDestructionDelayInGroups)
-}
-
-// deleteAnswer deletes the answer of the user to a question of the wizard in group chats.
-func (form *Form) deleteAnswer(msg *tgbotapi.Message) {
-	if shouldSelfDestruct(msg) {
-		selfdestruct.DeleteAfter(form.resources.appEnv.Bot, msg.Chat.ID, msg.MessageID, selfDestructionDelayInGroups)
-	}
-}
-
-// shouldSelfDestruct is true for non-ephemeral messages in group chats if the self-destruction is enabled.
-// Ephemeral messages disappear by themselves.
-func shouldSelfDestruct(msg *tgbotapi.Message) bool {
-	return selfDestructionDelayInGroups > 0 && base.IsGroupChat(&msg.Chat) && msg.EphemeralMessageID == 0
 }
 
 // replyCustomizer adds ForceReply to the replies of the wizard in group chats. The client of the user opens the reply

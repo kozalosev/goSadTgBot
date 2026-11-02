@@ -41,8 +41,17 @@ func SendAndDelete(bot base.ExtendedBotAPI, msgToSend tgbotapi.MessageConfig, af
 // delete messages in the group for this, so Telegram's refusal is expected and logged at the debug level only;
 // other failures are errors.
 func DeleteAfter(bot base.ExtendedBotAPI, chatID int64, messageID int, after time.Duration) {
+	DeleteIf(bot, chatID, messageID, after, nil)
+}
+
+// DeleteIf deletes a message after the delay if the condition, checked at that moment, is true. A nil condition is
+// always true. It returns immediately. The failures are logged like in [DeleteAfter].
+func DeleteIf(bot base.ExtendedBotAPI, chatID int64, messageID int, after time.Duration, condition func() bool) {
 	go func() {
 		time.Sleep(after)
+		if condition != nil && !condition() {
+			return
+		}
 		err := bot.Request(tgbotapi.NewDeleteMessage(chatID, messageID))
 		if err == nil {
 			return
@@ -51,8 +60,8 @@ func DeleteAfter(bot base.ExtendedBotAPI, chatID int64, messageID int, after tim
 		if isExpectedDeletionFailure(err) {
 			level = log.LevelDebug
 		}
-		log.Log(context.Background(), level, "Couldn't delete a message of a user",
-			logconst.FieldFunc, "DeleteAfter",
+		log.Log(context.Background(), level, "Couldn't delete a message",
+			logconst.FieldFunc, "DeleteIf",
 			logconst.FieldError, err)
 	}()
 }

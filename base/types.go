@@ -3,6 +3,7 @@ package base
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
@@ -125,6 +126,20 @@ type CommandHandlerTrait struct {
 // It implements the [ExtendedBotAPI] interface.
 type BotAPI struct {
 	internal *tgbotapi.BotAPI
+
+	deletionRightsMu sync.Mutex
+	deletionRights   map[int64]deletionRights
+}
+
+// DeletionRightsChecker is implemented by the bots which can tell if they may delete messages of other users in a chat.
+// [BotAPI] implements it; it's a separate interface to keep [ExtendedBotAPI] compatible.
+type DeletionRightsChecker interface {
+	CanDeleteMessages(chatID int64) bool
+}
+
+type deletionRights struct {
+	allowed   bool
+	checkedAt time.Time
 }
 
 // ApplicationEnv is a container for all application scoped resources.

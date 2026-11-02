@@ -4,6 +4,7 @@ import (
 	log "log/slog"
 
 	"slices"
+	"time"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/logconst"
@@ -153,6 +154,38 @@ func (bot *BotAPI) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
 // AnswerGuestQuery is a simple wrapper around [tgbotapi.BotAPI.AnswerGuestQuery].
 func (bot *BotAPI) AnswerGuestQuery(config tgbotapi.AnswerGuestQueryConfig) (tgbotapi.SentGuestMessage, error) {
 	return bot.internal.AnswerGuestQuery(config)
+}
+
+// deletionRightsTTL is how long the result of the check of the rights is cached: the rights rarely change, and
+// getChatMember shouldn't be called for every answer to a wizard.
+const deletionRightsTTL = 10 * time.Minute
+
+// CanDeleteMessages tells if the bot may delete messages of other users in the chat: it's the creator, or an
+// administrator with the can_delete_messages right. The result is cached for some time. A failed request means no.
+func (bot *BotAPI) CanDeleteMessages(chatID int64) bool {
+	bot.deletionRightsMu.Lock()
+	defer bot.deletionRightsMu.Unlock()
+	if rights, ok := bot.deletionRights[chatID]; ok && time.Since(rights.checkedAt) < deletionRightsTTL {
+		return rights.allowed
+	}
+
+	member, err := bot.internal.GetChatMember(tgbotapi.GetChatMemberConfig{
+		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{ChatConfig: tgbotapi.ChatConfig{ChatID: chatID}, UserID: bot.internal.Self.ID},
+	})
+	if err != nil {
+		log.Warn("Failed to get the rights of the bot in the chat",
+			logconst.FieldObject, "BotAPI",
+			logconst.FieldMethod, "CanDeleteMessages",
+			logconst.FieldCalledMethod, "GetChatMember",
+			logconst.FieldError, err)
+		return false
+	}
+	allowed := member.Status == "creator" || member.Status == "administrator" && member.CanDeleteMessages
+	if bot.deletionRights == nil {
+		bot.deletionRights = make(map[int64]deletionRights)
+	}
+	bot.deletionRights[chatID] = deletionRights{allowed: allowed, checkedAt: time.Now()}
+	return allowed
 }
 
 func (bot *BotAPI) GetStandardAPI() *tgbotapi.BotAPI {

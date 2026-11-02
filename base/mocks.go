@@ -18,6 +18,9 @@ const FakeInlineMessageID = "fake-inline-message-id"
 // FakeBotAPI is a mock for the [BotAPI] struct.
 // Use the GetOutput() method to get either the text of the sent message, or the request itself.
 type FakeBotAPI struct {
+	// DeletionAllowed is returned by CanDeleteMessages.
+	DeletionAllowed bool
+
 	sentMessages []string
 	sentRequests []tgbotapi.Chattable
 	callType     callType
@@ -58,6 +61,10 @@ func (bot *FakeBotAPI) AnswerGuestQuery(c tgbotapi.AnswerGuestQueryConfig) (tgbo
 	bot.callType = request
 	bot.sentRequests = append(bot.sentRequests, c)
 	return tgbotapi.SentGuestMessage{InlineMessageID: FakeInlineMessageID}, nil
+}
+
+func (bot *FakeBotAPI) CanDeleteMessages(int64) bool {
+	return bot.DeletionAllowed
 }
 
 func (bot *FakeBotAPI) GetStandardAPI() *tgbotapi.BotAPI {

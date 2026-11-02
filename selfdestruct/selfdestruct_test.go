@@ -45,3 +45,18 @@ func TestIsExpectedDeletionFailure(t *testing.T) {
 	assert.False(t, isExpectedDeletionFailure(&tgbotapi.Error{Code: 429, Message: "Too Many Requests: retry after 5"}))
 	assert.False(t, isExpectedDeletionFailure(errors.New("dial tcp: connection refused")))
 }
+
+func TestDeleteIf(t *testing.T) {
+	bot := &base.FakeBotAPI{}
+	DeleteIf(bot, 1, 2, time.Millisecond, func() bool { return false })
+	assert.Never(t, func() bool {
+		requests, _ := bot.GetOutput().([]tgbotapi.Chattable)
+		return len(requests) > 0
+	}, 50*time.Millisecond, 5*time.Millisecond)
+
+	DeleteIf(bot, 1, 2, time.Millisecond, func() bool { return true })
+	assert.Eventually(t, func() bool {
+		requests, _ := bot.GetOutput().([]tgbotapi.Chattable)
+		return len(requests) == 1
+	}, time.Second, time.Millisecond)
+}

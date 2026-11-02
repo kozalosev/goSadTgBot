@@ -90,3 +90,64 @@ func TestForm_ProcessNextField_InGroup(t *testing.T) {
 	assert.Equal(t, TestID, question.ReplyParameters.MessageID)
 	assert.Equal(t, tgbotapi.ForceReply{ForceReply: true, Selective: true}, question.ReplyMarkup)
 }
+
+// newGroupFormForCleanup prepares a form in a group with short timers of the cleanup.
+func newGroupFormForCleanup(t *testing.T, deletionAllowed bool) (*Form, *base.FakeBotAPI) {
+	SetSelfDestructionDelayInGroups(10 * time.Millisecond)
+	SetUnansweredQuestionLifetimeInGroups(10 * time.Millisecond)
+	t.Cleanup(func() {
+		SetSelfDestructionDelayInGroups(0)
+		SetUnansweredQuestionLifetimeInGroups(0)
+	})
+	bot := &base.FakeBotAPI{DeletionAllowed: deletionAllowed}
+	form := &Form{resources: NewEnv(&base.ApplicationEnv{Bot: bot, Ctx: ctx}, FakeStorage{})}
+	return form, bot
+}
+
+// deletedMessages returns the identifiers of the messages the bot has requested to delete.
+func deletedMessages(bot *base.FakeBotAPI) []int {
+	requests, _ := bot.GetOutput().([]tgbotapi.Chattable)
+	var ids []int
+	for _, req := range requests {
+		if deletion, ok := req.(tgbotapi.DeleteMessageConfig); ok {
+			ids = append(ids, deletion.MessageID)
+		}
+	}
+	return ids
+}
+
+// The fake bot returns 0 as the identifier of every sent message, so the question is the message 0.
+func newAnswer() *tgbotapi.Message {
+	answer := newGroupMessage(TestValue)
+	answer.MessageID = TestID + 1
+	answer.ReplyToMessage = &tgbotapi.Message{MessageID: 0}
+	return answer
+}
+
+func TestCleanup_UnansweredQuestionIsDeleted(t *testing.T) {
+	form, bot := newGroupFormForCleanup(t, false)
+	form.reply(newGroupMessage("/command"), TestPromptDesc, base.NoOpCustomizer)
+
+	assert.Eventually(t, func() bool { return len(deletedMessages(bot)) == 1 }, time.Second, 5*time.Millisecond)
+	assert.Equal(t, []int{0}, deletedMessages(bot))
+}
+
+func TestCleanup_AnsweredWithoutRightsIsKept(t *testing.T) {
+	form, bot := newGroupFormForCleanup(t, false)
+	form.reply(newGroupMessage("/command"), TestPromptDesc, base.NoOpCustomizer)
+	form.handleAnswer(newAnswer())
+
+	assert.Never(t, func() bool { return len(deletedMessages(bot)) > 0 }, 100*time.Millisecond, 5*time.Millisecond)
+}
+
+func TestCleanup_AnsweredWithRightsIsDeleted(t *testing.T) {
+	form, bot := newGroupFormForCleanup(t, true)
+	form.reply(newGroupMessage("/command"), TestPromptDesc, base.NoOpCustomizer)
+	form.handleAnswer(newAnswer())
+
+	// the answer, the question and the command the question was asked in reply to; the timer of the unanswered
+	// question deletes nothing, since the question has been answered
+	assert.Eventually(t, func() bool { return len(deletedMessages(bot)) == 3 }, time.Second, 5*time.Millisecond)
+	assert.ElementsMatch(t, []int{TestID + 1, 0, TestID}, deletedMessages(bot))
+	assert.Never(t, func() bool { return len(deletedMessages(bot)) > 3 }, 50*time.Millisecond, 5*time.Millisecond)
+}
