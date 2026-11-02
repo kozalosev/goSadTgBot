@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	log "log/slog"
+	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -57,33 +58,73 @@ func warnIfModeDisabled(appParams *Params, enabled bool, mode string) {
 }
 
 // HandleUpdate is the main router function for processing of [tgbotapi.Update].
+// Every update is processed in its own goroutine. A panic in a handler is recovered, logged and counted
+// by [metrics.IncPanicsCounter] instead of crashing the whole application.
 func HandleUpdate(appParams *Params, wg *sync.WaitGroup, upd *tgbotapi.Update) {
+	kind := updateKind(upd)
+	metrics.IncUpdateCounters(kind, upd.SentFrom())
+
 	if upd.InlineQuery != nil {
-		wg.Add(1)
-		go func(query tgbotapi.InlineQuery) {
-			defer wg.Done()
-			processInline(appParams, &query)
-		}(*upd.InlineQuery) // copy by value
+		query := *upd.InlineQuery // copy by value
+		goRecovered(wg, kind, func() { processInline(appParams, &query) })
 	} else if upd.ChosenInlineResult != nil {
 		metrics.Inc(metrics.ChosenInlineResultCounter)
 	} else if upd.Message != nil {
-		wg.Add(1)
-		go func(msg tgbotapi.Message) {
-			defer wg.Done()
-			processMessage(appParams, &msg)
-		}(*upd.Message) // copy by value
+		msg := *upd.Message // copy by value
+		goRecovered(wg, kind, func() { processMessage(appParams, &msg) })
 	} else if upd.CallbackQuery != nil {
-		wg.Add(1)
-		go func(query tgbotapi.CallbackQuery) {
-			defer wg.Done()
-			processCallbackQuery(appParams, &query)
-		}(*upd.CallbackQuery) // copy by value
+		query := *upd.CallbackQuery // copy by value
+		goRecovered(wg, kind, func() { processCallbackQuery(appParams, &query) })
 	} else if upd.GuestMessage != nil {
-		wg.Add(1)
-		go func(msg tgbotapi.Message) {
-			defer wg.Done()
-			processGuestMessage(appParams, &msg)
-		}(*upd.GuestMessage) // copy by value
+		msg := *upd.GuestMessage // copy by value
+		goRecovered(wg, kind, func() { processGuestMessage(appParams, &msg) })
+	}
+}
+
+// goRecovered runs the function in a goroutine tracked by the wait group and recovers from its panic.
+func goRecovered(wg *sync.WaitGroup, kind string, f func()) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				metrics.IncPanicsCounter(kind)
+				log.Error("Recovered from a panic while handling an update",
+					logconst.FieldFunc, "HandleUpdate",
+					"kind", kind,
+					"panic", r,
+					"stack", string(debug.Stack()))
+			}
+		}()
+		f()
+	}()
+}
+
+// updateKind returns the type of the update as Telegram names it in allowed_updates.
+func updateKind(upd *tgbotapi.Update) string {
+	switch {
+	case upd.Message != nil:
+		return tgbotapi.UpdateTypeMessage
+	case upd.EditedMessage != nil:
+		return tgbotapi.UpdateTypeEditedMessage
+	case upd.ChannelPost != nil:
+		return tgbotapi.UpdateTypeChannelPost
+	case upd.EditedChannelPost != nil:
+		return tgbotapi.UpdateTypeEditedChannelPost
+	case upd.InlineQuery != nil:
+		return tgbotapi.UpdateTypeInlineQuery
+	case upd.ChosenInlineResult != nil:
+		return tgbotapi.UpdateTypeChosenInlineResult
+	case upd.CallbackQuery != nil:
+		return tgbotapi.UpdateTypeCallbackQuery
+	case upd.GuestMessage != nil:
+		return tgbotapi.UpdateTypeGuestMessage
+	case upd.MyChatMember != nil:
+		return tgbotapi.UpdateTypeMyChatMember
+	case upd.ChatMember != nil:
+		return tgbotapi.UpdateTypeChatMember
+	default:
+		return "other"
 	}
 }
 

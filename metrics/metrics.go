@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"github.com/IBM/pgxpoolprometheus"
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
@@ -22,6 +23,48 @@ const ChosenInlineResultCounter = "inline_result_was_chosen"
 type handlerName string
 
 var handlerCounters = make(map[handlerName]prometheus.Counter)
+
+// unknownLabel is used for the label values which are missing in the update.
+const unknownLabel = "unknown"
+
+var (
+	updateKindCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "update_kind_total",
+		Help: "Count of all updates received from Telegram, by update kind. The breakdown shows how much of the traffic no handler acts on",
+	}, []string{"kind"})
+	usedLanguageCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "used_language_total",
+		Help: "Count of updates by the language_code of the sender's Telegram client, an anonymous proxy for the languages of the audience",
+	}, []string{"language"})
+	panicsCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "panics_total",
+		Help: "Count of panics recovered while handling updates, by update kind. Any nonzero rate is a bug",
+	}, []string{"kind"})
+	wizardCompletedCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "wizard_completed_total",
+		Help: "Count of wizard forms which have got all their fields and invoked the action, by wizard. Read it against used_message_handler_* to see how many forms were abandoned",
+	}, []string{"wizard"})
+)
+
+// IncUpdateCounters counts the update by its kind and the language of its sender.
+func IncUpdateCounters(kind string, sender *tgbotapi.User) {
+	updateKindCounter.WithLabelValues(kind).Inc()
+	language := unknownLabel
+	if sender != nil && len(sender.LanguageCode) > 0 {
+		language = sender.LanguageCode
+	}
+	usedLanguageCounter.WithLabelValues(language).Inc()
+}
+
+// IncPanicsCounter counts a panic recovered while handling an update of the kind.
+func IncPanicsCounter(kind string) {
+	panicsCounter.WithLabelValues(kind).Inc()
+}
+
+// IncWizardCompletedCounter counts a wizard form which has invoked its action.
+func IncWizardCompletedCounter(wizard string) {
+	wizardCompletedCounter.WithLabelValues(wizard).Inc()
+}
 
 func init() {
 	registerCounter(ChosenInlineResultCounter, "")

@@ -12,7 +12,7 @@ Packages
 * [base](base) contains base types like container for request environment or object for sending requests.
 * [app](app) provides an additional container for the application environment and method for processing the updates.
 * [server](server) allows you to use a [WebHook][setWebhook].
-* [metrics](metrics) allows you to publish the `/metrics` endpoint for Prometheus.
+* [metrics](metrics) allows you to publish the `/metrics` endpoint for Prometheus. It counts the usages of handlers, updates by kind and language, recovered panics and completed wizards, and measures the requests to Telegram Bot API (see `NewTelegramHTTPClient`).
 * [storage](storage) creates a database connection and runs the migrations located in the `db/migrations` directory.
 * [settings](settings) consists of an interface that must provide user settings to the bot.
 * [wizard](wizard) provides facilities to create forms with fields of different types.

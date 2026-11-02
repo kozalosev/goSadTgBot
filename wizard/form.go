@@ -8,6 +8,7 @@ import (
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
+	"github.com/kozalosev/goSadTgBot/metrics"
 )
 
 // localization keys
@@ -117,6 +118,7 @@ func (form *Form) doAction(reqenv *base.RequestEnv, msg *tgbotapi.Message) {
 		form.resources.appEnv.Bot.Reply(msg, reqenv.Lang.Tr(MissingStateErrorTr))
 		return
 	}
+	metrics.IncWizardCompletedCounter(form.WizardType)
 	form.descriptor.action(reqenv, msg, form.Fields)
 }
 

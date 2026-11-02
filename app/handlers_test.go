@@ -2,13 +2,16 @@ package app
 
 import (
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/loctools/go-l10n/loc"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const testGuestQueryID = "guest-query"
@@ -118,4 +121,40 @@ func answerGuestMessageForTest(t *testing.T, handlers []base.GuestHandler, msg *
 
 	requests, _ := bot.GetOutput().([]tgbotapi.Chattable)
 	return requests
+}
+
+func TestGoRecovered(t *testing.T) {
+	before := gatheredPanics(t, tgbotapi.UpdateTypeMessage)
+
+	var wg sync.WaitGroup
+	goRecovered(&wg, tgbotapi.UpdateTypeMessage, func() { panic("boom") })
+	wg.Wait()
+
+	assert.Equal(t, before+1, gatheredPanics(t, tgbotapi.UpdateTypeMessage))
+}
+
+// gatheredPanics reads the value of panics_total for the kind from the default Prometheus registry.
+func gatheredPanics(t *testing.T, kind string) float64 {
+	families, err := prometheus.DefaultGatherer.Gather()
+	require.NoError(t, err)
+	for _, family := range families {
+		if family.GetName() != "panics_total" {
+			continue
+		}
+		for _, m := range family.GetMetric() {
+			for _, label := range m.GetLabel() {
+				if label.GetName() == "kind" && label.GetValue() == kind {
+					return m.GetCounter().GetValue()
+				}
+			}
+		}
+	}
+	return 0
+}
+
+func TestUpdateKind(t *testing.T) {
+	assert.Equal(t, tgbotapi.UpdateTypeMessage, updateKind(&tgbotapi.Update{Message: &tgbotapi.Message{}}))
+	assert.Equal(t, tgbotapi.UpdateTypeGuestMessage, updateKind(&tgbotapi.Update{GuestMessage: &tgbotapi.Message{}}))
+	assert.Equal(t, tgbotapi.UpdateTypeEditedMessage, updateKind(&tgbotapi.Update{EditedMessage: &tgbotapi.Message{}}))
+	assert.Equal(t, "other", updateKind(&tgbotapi.Update{}))
 }
