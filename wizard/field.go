@@ -115,7 +115,7 @@ func (f *Field) askUser(reqenv *base.RequestEnv, msg *tgbotapi.Message) {
 		// a reply keyboard is shown in private chats only: in groups, it's in the way of other members
 		f.Form.resources.appEnv.Bot.ReplyWithKeyboard(msg, promptDescription, f.descriptor.ReplyKeyboardBuilder(reqenv, msg))
 	} else {
-		f.Form.reply(msg, promptDescription, base.NoOpCustomizer)
+		f.Form.reply(reqenv, msg, promptDescription, base.NoOpCustomizer)
 	}
 }
 
