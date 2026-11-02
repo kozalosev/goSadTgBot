@@ -209,3 +209,36 @@ func TestIsExpectedDeletionFailure(t *testing.T) {
 	assert.False(t, isExpectedDeletionFailure(&tgbotapi.Error{Code: 429, Message: "Too Many Requests: retry after 5"}))
 	assert.False(t, isExpectedDeletionFailure(errors.New("dial tcp: connection refused")))
 }
+
+func TestExecuteAll_WarnsBeforeDeletion(t *testing.T) {
+	bot := &base.FakeBotAPI{}
+	s := newSchedulerForTest(bot)
+	task := Task{Kind: KindDelete, ChatID: 1, MessageID: 1, WithMessageIDs: []int{2}}
+	warned := task
+	warned.Warning = &Warning{Text: "🧹", ParseMode: tgbotapi.ModeHTML, MessageID: 1, Grace: 5 * time.Second}
+	s.executeAll([]Task{warned})
+
+	edit := tgbotapi.NewEditMessageText(1, 1, "🧹")
+	edit.ParseMode = tgbotapi.ModeHTML
+	assert.Equal(t, []tgbotapi.Chattable{edit}, requests(bot), "only the message of the bot is edited, nothing is deleted yet")
+
+	ctx := context.Background()
+	due, err := s.queue.TakeDue(ctx, time.Now(), 10)
+	require.NoError(t, err)
+	assert.Empty(t, due, "the deletion must wait for the grace period")
+	due, err = s.queue.TakeDue(ctx, time.Now().Add(6*time.Second), 10)
+	require.NoError(t, err)
+	assert.Equal(t, []Task{task}, due, "the same deletion without the warning")
+}
+
+func TestExecuteAll_DeletesEvenIfWarningFailed(t *testing.T) {
+	bot := &base.FakeBotAPI{RequestError: func(tgbotapi.Chattable) error {
+		return &tgbotapi.Error{Code: 400, Message: "Bad Request: there is no text in the message to edit"}
+	}}
+	s := newSchedulerForTest(bot)
+	s.executeAll([]Task{{Kind: KindDelete, ChatID: 1, MessageID: 1, Warning: &Warning{Text: "🧹", MessageID: 1}}})
+
+	due, err := s.queue.TakeDue(context.Background(), time.Now(), 10)
+	require.NoError(t, err)
+	assert.Equal(t, []Task{{Kind: KindDelete, ChatID: 1, MessageID: 1}}, due)
+}

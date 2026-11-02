@@ -114,8 +114,14 @@ func (s *scheduler) executeAll(tasks []Task) {
 		})
 	}
 
+	warnings, tasks := lo.FilterReject(tasks, func(task Task, _ int) bool {
+		return task.Kind == KindDelete && task.Warning != nil
+	})
+	for _, task := range warnings {
+		goLimited(func() { s.warn(task) })
+	}
 	deletions, others := lo.FilterReject(tasks, func(task Task, _ int) bool { return task.Kind == KindDelete })
-	for chatID, chatDeletions := range lo.GroupBy(deletions, func(task Task) int64 { return task.ChatID }) {
+	for chatID, chatDeletions := range lo.GroupBy(deletions, func(task Task) base.ChatID { return task.ChatID }) {
 		goLimited(func() { s.deleteInChat(chatID, chatDeletions) })
 	}
 	for _, task := range others {
@@ -129,8 +135,8 @@ func (s *scheduler) executeAll(tasks []Task) {
 // happens if only some of them can't be deleted, and the failures of separate deletions are logged according to their
 // reasons. If the flood control asks to wait, all the tasks of the chat are postponed: deleting a message again is
 // harmless.
-func (s *scheduler) deleteInChat(chatID int64, tasks []Task) {
-	messageIDs := lo.Uniq(lo.FlatMap(tasks, func(task Task, _ int) []int { return task.messageIDs() }))
+func (s *scheduler) deleteInChat(chatID base.ChatID, tasks []Task) {
+	messageIDs := lo.Uniq(lo.FlatMap(tasks, func(task Task, _ int) []base.MessageID { return task.messageIDs() }))
 	if len(messageIDs) == 1 {
 		s.deleteMessage(chatID, messageIDs[0], tasks...)
 		return
@@ -154,8 +160,45 @@ func (s *scheduler) deleteInChat(chatID int64, tasks []Task) {
 	}
 }
 
+// warn replaces the text of the message of the bot with the warning and puts the task back to delete the messages
+// after the grace period. If the message can't be edited (it's gone already, or it's not a text), the messages are
+// deleted anyway.
+func (s *scheduler) warn(task Task) {
+	warning := task.Warning
+	edit := tgbotapi.NewEditMessageText(task.ChatID, warning.MessageID, warning.Text)
+	edit.ParseMode = warning.ParseMode
+	err := s.bot.Request(edit)
+	switch {
+	case err == nil || isNotModified(err):
+		warningsCounter.WithLabelValues(outcomeDone).Inc()
+	case s.retryLater(err, task):
+		return
+	default:
+		warningsCounter.WithLabelValues(outcomeFailed).Inc()
+		log.Debug("Couldn't replace a message with the warning",
+			logconst.FieldFunc, "selfdestruct.warn",
+			logconst.FieldError, err)
+	}
+
+	task.Warning = nil
+	if err := s.queue.Add(s.ctx, task, time.Now().Add(warning.Grace)); err != nil {
+		queueErrorsCounter.WithLabelValues(operationAdd).Inc()
+		log.Error("Failed to schedule the deletion after the warning",
+			logconst.FieldFunc, "selfdestruct.warn",
+			logconst.FieldCalledMethod, "Add",
+			logconst.FieldError, err)
+	}
+}
+
+// isNotModified tells if the message already has the text, e.g. the warning was shown before the flood control
+// postponed the task.
+func isNotModified(err error) bool {
+	var apiErr *tgbotapi.Error
+	return errors.As(err, &apiErr) && strings.Contains(apiErr.Message, "message is not modified")
+}
+
 // deleteMessage deletes one message; the tasks are postponed if the flood control asks to wait.
-func (s *scheduler) deleteMessage(chatID int64, messageID int, tasks ...Task) {
+func (s *scheduler) deleteMessage(chatID base.ChatID, messageID base.MessageID, tasks ...Task) {
 	err := s.bot.Request(tgbotapi.NewDeleteMessage(chatID, messageID))
 	if err == nil {
 		countMessages(KindDelete, outcomeDone, 1)
@@ -241,7 +284,7 @@ func Schedule(bot base.ExtendedBotAPI, task Task, after time.Duration) {
 
 // CancelDeletion removes the scheduled deletion of the message from the queue and returns it. ok is false if the
 // message wasn't scheduled for deletion or its time has already come.
-func CancelDeletion(bot base.ExtendedBotAPI, chatID int64, messageID int) (task Task, ok bool) {
+func CancelDeletion(bot base.ExtendedBotAPI, chatID base.ChatID, messageID base.MessageID) (task Task, ok bool) {
 	s := getScheduler(bot)
 	task, ok, err := s.queue.Take(s.ctx, deletionTaskID(chatID, messageID))
 	if err != nil {
@@ -271,7 +314,7 @@ func SendAndDelete(bot base.ExtendedBotAPI, msgToSend tgbotapi.MessageConfig, af
 // DeleteAfter deletes a message after the delay. A message of another user can be deleted only if the bot has the right
 // to delete messages in the group, so Telegram's refusal is expected and logged at the debug level only; other failures
 // are errors.
-func DeleteAfter(bot base.ExtendedBotAPI, chatID int64, messageID int, after time.Duration) {
+func DeleteAfter(bot base.ExtendedBotAPI, chatID base.ChatID, messageID base.MessageID, after time.Duration) {
 	Schedule(bot, Task{Kind: KindDelete, ChatID: chatID, MessageID: messageID}, after)
 }
 

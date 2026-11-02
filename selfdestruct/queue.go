@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/kozalosev/goSadTgBot/base"
 )
 
 // TaskKind is what to do with a message when its time has come.
@@ -20,16 +22,30 @@ const (
 
 // Task is a postponed action with a message, stored in a [Queue].
 type Task struct {
-	Kind            TaskKind `json:"kind"`
-	ChatID          int64    `json:"chatID,omitempty"`
-	MessageID       int      `json:"messageID,omitempty"`
-	InlineMessageID string   `json:"inlineMessageID,omitempty"`
-	Text            string   `json:"text,omitempty"`
-	// ReplyToMessageID is the message the deleted message replies to. Telegram doesn't send the replies of the replies,
-	// so the wizard keeps here the command its question was asked in reply to.
-	ReplyToMessageID int `json:"replyToMessageID,omitempty"`
+	Kind            TaskKind       `json:"kind"`
+	ChatID          base.ChatID    `json:"chatID,omitempty"`
+	MessageID       base.MessageID `json:"messageID,omitempty"`
+	InlineMessageID string         `json:"inlineMessageID,omitempty"`
+	Text            string         `json:"text,omitempty"`
+	// ReplyToMessageID is the message the deleted message replies to, returned by [CancelDeletion]: Telegram doesn't
+	// send the replies of the replies, so whoever cancels the deletion of a reply may need it back.
+	ReplyToMessageID base.MessageID `json:"replyToMessageID,omitempty"`
 	// WithMessageIDs are the other messages of the chat deleted together with MessageID, by the same request.
-	WithMessageIDs []int `json:"withMessageIDs,omitempty"`
+	WithMessageIDs []base.MessageID `json:"withMessageIDs,omitempty"`
+	// Warning, if set, is shown in place of the messages of the bot before the deletion.
+	Warning *Warning `json:"warning,omitempty"`
+}
+
+// Warning tells the members of the chat that the bot is about to delete the messages: when the time of a deletion
+// comes, the text of one message of the bot is replaced with Text, and all the messages of the task are deleted
+// the grace period later. Telegram edits one message per request, so a single message is edited, e.g. the last one
+// the users see.
+type Warning struct {
+	Text      string `json:"text"`
+	ParseMode string `json:"parseMode,omitempty"`
+	// MessageID is the message of the bot to edit, among the deleted ones.
+	MessageID base.MessageID `json:"messageID"`
+	Grace     time.Duration  `json:"grace"`
 }
 
 // ID identifies the task in the queue: there is only one task for a message, and it can be found by the message.
@@ -41,11 +57,11 @@ func (task Task) ID() string {
 }
 
 // messageIDs returns all the messages a deletion task deletes.
-func (task Task) messageIDs() []int {
-	return append([]int{task.MessageID}, task.WithMessageIDs...)
+func (task Task) messageIDs() []base.MessageID {
+	return append([]base.MessageID{task.MessageID}, task.WithMessageIDs...)
 }
 
-func deletionTaskID(chatID int64, messageID int) string {
+func deletionTaskID(chatID base.ChatID, messageID base.MessageID) string {
 	return fmt.Sprintf("delete:%d:%d", chatID, messageID)
 }
 

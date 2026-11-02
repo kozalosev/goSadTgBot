@@ -38,6 +38,10 @@ var (
 		Name: "self_destruction_retries_total",
 		Help: "Count of the tasks postponed because the flood control of Telegram asked to wait (429 with retry_after), by kind. A task may be postponed many times and still end as done",
 	}, []string{"kind"})
+	warningsCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "self_destruction_warnings_total",
+		Help: "Count of the messages of the bot replaced with the warning before the deletion, by outcome: done, or failed if the message couldn't be edited (it's deleted anyway)",
+	}, []string{"outcome"})
 	bulkFallbackCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "self_destruction_bulk_fallback_total",
 		Help: "Count of the deleteMessages requests Telegram refused, so that the messages of the chat were deleted one by one",
@@ -76,6 +80,9 @@ func init() {
 			messagesCounter.WithLabelValues(string(kind), outcome)
 		}
 		retriesCounter.WithLabelValues(string(kind))
+	}
+	for _, outcome := range []string{outcomeDone, outcomeFailed} {
+		warningsCounter.WithLabelValues(outcome)
 	}
 	for _, operation := range []string{operationAdd, operationTake, operationTakeDue} {
 		queueErrorsCounter.WithLabelValues(operation)
