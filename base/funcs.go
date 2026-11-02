@@ -4,6 +4,7 @@ import (
 	log "log/slog"
 
 	"slices"
+	"strings"
 	"time"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
@@ -46,6 +47,12 @@ func NewReplier(appenv *ApplicationEnv, reqenv *RequestEnv, msg *tgbotapi.Messag
 // IsGroupChat tells if the chat is a group or a supergroup.
 func IsGroupChat(chat *tgbotapi.Chat) bool {
 	return chat.IsGroup() || chat.IsSuperGroup()
+}
+
+// IsReplyToBot tells if the message is a reply to a message of the bot with the name.
+func IsReplyToBot(msg *tgbotapi.Message, botName string) bool {
+	replyTo := msg.ReplyToMessage
+	return replyTo != nil && replyTo.From != nil && strings.EqualFold(replyTo.From.UserName, botName)
 }
 
 func NewRequestEnv(langCtx *loc.Context, opts settings.UserOptions) *RequestEnv {

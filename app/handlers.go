@@ -197,8 +197,7 @@ func canContinueForm(form *wizard.Form, msg *tgbotapi.Message, botName string) b
 	if !base.IsGroupChat(&msg.Chat) {
 		return true
 	}
-	replyTo := msg.ReplyToMessage
-	return replyTo != nil && replyTo.From != nil && strings.EqualFold(replyTo.From.UserName, botName)
+	return base.IsReplyToBot(msg, botName)
 }
 
 func processInline(appParams *Params, query *tgbotapi.InlineQuery) {
