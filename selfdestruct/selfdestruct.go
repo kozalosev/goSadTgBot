@@ -1,5 +1,7 @@
-// Package selfdestruct removes the messages of the bot some time after they have been sent. The timers live in memory,
-// so the messages that were not removed before a restart stay in the chats.
+// Package selfdestruct removes the messages some time after they have been sent. The postponed actions are kept in
+// a [Queue] and executed by a worker started by [Start]. With a [RedisQueue], they survive a restart of the
+// application; without [Start], the package falls back to a [MemoryQueue] on the first use, and the messages that were
+// not removed before a restart stay in the chats.
 package selfdestruct
 
 import (
@@ -8,12 +10,142 @@ import (
 	log "log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
 )
+
+const (
+	// DefaultPollInterval is how often the worker started on the first use looks for the tasks whose time has come.
+	DefaultPollInterval = time.Second
+
+	tasksPerPoll = 100
+)
+
+var (
+	globalSchedulerMu sync.Mutex
+	globalScheduler   *scheduler
+)
+
+type scheduler struct {
+	ctx   context.Context
+	bot   base.ExtendedBotAPI
+	queue Queue
+}
+
+// Start makes the package keep the tasks in the queue and starts the worker, which executes them every interval
+// until ctx is done. Call it once at startup, before any message is scheduled.
+func Start(ctx context.Context, bot base.ExtendedBotAPI, queue Queue, interval time.Duration) {
+	s := &scheduler{ctx: ctx, bot: bot, queue: queue}
+	globalSchedulerMu.Lock()
+	globalScheduler = s
+	globalSchedulerMu.Unlock()
+	go s.run(interval)
+}
+
+// getScheduler returns the global scheduler or starts one with a [MemoryQueue] if [Start] hasn't been called.
+func getScheduler(bot base.ExtendedBotAPI) *scheduler {
+	globalSchedulerMu.Lock()
+	defer globalSchedulerMu.Unlock()
+	if globalScheduler == nil {
+		log.Warn("selfdestruct.Start wasn't called: the tasks are kept in memory and will be lost on restart",
+			logconst.FieldFunc, "selfdestruct.getScheduler")
+		globalScheduler = &scheduler{ctx: context.Background(), bot: bot, queue: NewMemoryQueue()}
+		go globalScheduler.run(DefaultPollInterval)
+	}
+	return globalScheduler
+}
+
+func (s *scheduler) run(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-ticker.C:
+			s.executeDue()
+		}
+	}
+}
+
+func (s *scheduler) executeDue() {
+	for {
+		tasks, err := s.queue.TakeDue(s.ctx, time.Now(), tasksPerPoll)
+		if err != nil {
+			log.Error("Failed to take the due tasks from the queue",
+				logconst.FieldFunc, "selfdestruct.executeDue",
+				logconst.FieldCalledMethod, "TakeDue",
+				logconst.FieldError, err)
+		}
+		for _, task := range tasks {
+			s.execute(task)
+		}
+		if err != nil || len(tasks) < tasksPerPoll {
+			return
+		}
+	}
+}
+
+func (s *scheduler) execute(task Task) {
+	switch task.Kind {
+	case KindDelete:
+		err := s.bot.Request(tgbotapi.NewDeleteMessage(task.ChatID, task.MessageID))
+		if err == nil {
+			return
+		}
+		level := log.LevelError
+		if isExpectedDeletionFailure(err) {
+			level = log.LevelDebug
+		}
+		log.Log(context.Background(), level, "Couldn't delete a message",
+			logconst.FieldFunc, "selfdestruct.execute",
+			logconst.FieldError, err)
+	case KindReplaceInline:
+		edit := tgbotapi.EditMessageTextConfig{
+			BaseEdit: tgbotapi.BaseEdit{InlineMessageID: task.InlineMessageID},
+			Text:     task.Text,
+		}
+		if err := s.bot.Request(edit); err != nil {
+			log.Error("Failed to replace an inline message with the placeholder",
+				logconst.FieldFunc, "selfdestruct.execute",
+				"inline_message_id", task.InlineMessageID,
+				logconst.FieldError, err)
+		}
+	default:
+		log.Error("Unknown kind of a task",
+			logconst.FieldFunc, "selfdestruct.execute",
+			logconst.FieldValue, task.Kind)
+	}
+}
+
+// Schedule puts the task into the queue to be executed after the delay. It replaces a task for the same message.
+func Schedule(bot base.ExtendedBotAPI, task Task, after time.Duration) {
+	s := getScheduler(bot)
+	if err := s.queue.Add(s.ctx, task, time.Now().Add(after)); err != nil {
+		log.Error("Failed to schedule a task",
+			logconst.FieldFunc, "selfdestruct.Schedule",
+			logconst.FieldCalledMethod, "Add",
+			logconst.FieldError, err)
+	}
+}
+
+// CancelDeletion removes the scheduled deletion of the message from the queue and returns it. ok is false if the
+// message wasn't scheduled for deletion or its time has already come.
+func CancelDeletion(bot base.ExtendedBotAPI, chatID int64, messageID int) (task Task, ok bool) {
+	s := getScheduler(bot)
+	task, ok, err := s.queue.Take(s.ctx, deletionTaskID(chatID, messageID))
+	if err != nil {
+		log.Error("Failed to cancel a deletion",
+			logconst.FieldFunc, "selfdestruct.CancelDeletion",
+			logconst.FieldCalledMethod, "Take",
+			logconst.FieldError, err)
+	}
+	return task, ok
+}
 
 // SendAndDelete sends the message and deletes it after the delay. It returns after sending.
 func SendAndDelete(bot base.ExtendedBotAPI, msgToSend tgbotapi.MessageConfig, after time.Duration) {
@@ -26,44 +158,14 @@ func SendAndDelete(bot base.ExtendedBotAPI, msgToSend tgbotapi.MessageConfig, af
 			logconst.FieldError, err)
 		return
 	}
-
-	go func() {
-		time.Sleep(after)
-		if err := bot.Request(tgbotapi.NewDeleteMessage(sentMsg.Chat.ID, sentMsg.MessageID)); err != nil {
-			log.Error("Couldn't delete a self-destroying message",
-				logconst.FieldFunc, "SendAndDelete",
-				logconst.FieldError, err)
-		}
-	}()
+	DeleteAfter(bot, msgToSend.ChatID, sentMsg.MessageID, after)
 }
 
-// DeleteAfter deletes a message of another user after the delay. It returns immediately. The bot needs the right to
-// delete messages in the group for this, so Telegram's refusal is expected and logged at the debug level only;
-// other failures are errors.
+// DeleteAfter deletes a message after the delay. A message of another user can be deleted only if the bot has the right
+// to delete messages in the group, so Telegram's refusal is expected and logged at the debug level only; other failures
+// are errors.
 func DeleteAfter(bot base.ExtendedBotAPI, chatID int64, messageID int, after time.Duration) {
-	DeleteIf(bot, chatID, messageID, after, nil)
-}
-
-// DeleteIf deletes a message after the delay if the condition, checked at that moment, is true. A nil condition is
-// always true. It returns immediately. The failures are logged like in [DeleteAfter].
-func DeleteIf(bot base.ExtendedBotAPI, chatID int64, messageID int, after time.Duration, condition func() bool) {
-	go func() {
-		time.Sleep(after)
-		if condition != nil && !condition() {
-			return
-		}
-		err := bot.Request(tgbotapi.NewDeleteMessage(chatID, messageID))
-		if err == nil {
-			return
-		}
-		level := log.LevelError
-		if isExpectedDeletionFailure(err) {
-			level = log.LevelDebug
-		}
-		log.Log(context.Background(), level, "Couldn't delete a message",
-			logconst.FieldFunc, "DeleteIf",
-			logconst.FieldError, err)
-	}()
+	Schedule(bot, Task{Kind: KindDelete, ChatID: chatID, MessageID: messageID}, after)
 }
 
 // isExpectedDeletionFailure tells if Telegram has refused to delete a message for a reason the bot can't help:
@@ -82,17 +184,5 @@ func isExpectedDeletionFailure(err error) bool {
 // An inline message, including the answer to a guest query, can't be deleted by the bot: Telegram refuses it
 // since the bot isn't a member of the chat, even if the chat and the message are decoded from the identifier.
 func ReplaceInline(bot base.ExtendedBotAPI, inlineMessageID, placeholder string, after time.Duration) {
-	go func() {
-		time.Sleep(after)
-		edit := tgbotapi.EditMessageTextConfig{
-			BaseEdit: tgbotapi.BaseEdit{InlineMessageID: inlineMessageID},
-			Text:     placeholder,
-		}
-		if err := bot.Request(edit); err != nil {
-			log.Error("Failed to replace an inline message with the placeholder",
-				logconst.FieldFunc, "ReplaceInline",
-				"inline_message_id", inlineMessageID,
-				logconst.FieldError, err)
-		}
-	}()
+	Schedule(bot, Task{Kind: KindReplaceInline, InlineMessageID: inlineMessageID, Text: placeholder}, after)
 }

@@ -1,11 +1,13 @@
 package wizard
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
+	"github.com/kozalosev/goSadTgBot/selfdestruct"
 	"github.com/loctools/go-l10n/loc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -100,6 +102,9 @@ func newGroupFormForCleanup(t *testing.T, deletionAllowed bool) (*Form, *base.Fa
 		SetUnansweredQuestionLifetimeInGroups(0)
 	})
 	bot := &base.FakeBotAPI{DeletionAllowed: deletionAllowed}
+	workerCtx, cancel := context.WithCancel(ctx)
+	t.Cleanup(cancel)
+	selfdestruct.Start(workerCtx, bot, selfdestruct.NewMemoryQueue(), time.Millisecond)
 	form := &Form{resources: NewEnv(&base.ApplicationEnv{Bot: bot, Ctx: ctx}, FakeStorage{})}
 	return form, bot
 }

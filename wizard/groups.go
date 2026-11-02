@@ -2,7 +2,6 @@ package wizard
 
 import (
 	log "log/slog"
-	"sync"
 	"time"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
@@ -19,26 +18,12 @@ import (
 //     otherwise;
 //   - a question nobody has answered is deleted when the form expires, whatever the rights of the bot are.
 //
-// The timers and the asked questions live in memory, so the messages of the forms filled before a restart stay.
+// A question is scheduled for deletion as unanswered right after it's asked, and the answer cancels that deletion. The
+// schedule is kept by the selfdestruct package, so it survives a restart if the package is started with a Redis queue.
 var (
 	selfDestructionDelayInGroups       time.Duration
 	unansweredQuestionLifetimeInGroups time.Duration
-
-	askedQuestions = struct {
-		sync.Mutex
-		m map[questionKey]*askedQuestion
-	}{m: make(map[questionKey]*askedQuestion)}
 )
-
-type questionKey struct {
-	chatID    int64
-	messageID int
-}
-
-type askedQuestion struct {
-	sourceMessageID int // the message the question was asked in reply to
-	answered        bool
-}
 
 // SetSelfDestructionDelayInGroups makes the questions of the wizards and the answers of the users to them disappear
 // from group chats after the delay, so that filling a form doesn't litter the chat. Zero disables it. See also
@@ -76,45 +61,36 @@ func (form *Form) reply(msg *tgbotapi.Message, text string, customizer base.Mess
 		return
 	}
 
-	key := questionKey{chatID: msg.Chat.ID, messageID: sent.MessageID}
-	askedQuestions.Lock()
-	askedQuestions.m[key] = &askedQuestion{sourceMessageID: msg.MessageID}
-	askedQuestions.Unlock()
-
-	// an answered question is taken care of in handleAnswer
-	selfdestruct.DeleteIf(bot, key.chatID, key.messageID, unansweredQuestionLifetime(), func() bool {
-		askedQuestions.Lock()
-		defer askedQuestions.Unlock()
-		question := askedQuestions.m[key]
-		delete(askedQuestions.m, key)
-		return question == nil || !question.answered
-	})
+	// deleted as unanswered unless handleAnswer cancels it
+	selfdestruct.Schedule(bot, selfdestruct.Task{
+		Kind:             selfdestruct.KindDelete,
+		ChatID:           msg.Chat.ID,
+		MessageID:        sent.MessageID,
+		ReplyToMessageID: msg.MessageID,
+	}, unansweredQuestionLifetime())
 }
 
-// handleAnswer marks the question as answered and, if the bot may delete messages of other users in the group,
-// deletes the answer, the question and the message the question was asked in reply to after the delay.
+// handleAnswer cancels the deletion of the question as unanswered and, if the bot may delete messages of other users
+// in the group, deletes the answer, the question and the message the question was asked in reply to after the delay.
 func (form *Form) handleAnswer(msg *tgbotapi.Message) {
 	if !shouldSelfDestruct(msg) {
 		return
 	}
 
+	bot := form.resources.appEnv.Bot
 	toDelete := []int{msg.MessageID}
 	if replyTo := msg.ReplyToMessage; replyTo != nil {
 		toDelete = append(toDelete, replyTo.MessageID)
-		askedQuestions.Lock()
-		if question := askedQuestions.m[questionKey{chatID: msg.Chat.ID, messageID: replyTo.MessageID}]; question != nil {
-			question.answered = true
-			toDelete = append(toDelete, question.sourceMessageID)
+		if question, ok := selfdestruct.CancelDeletion(bot, msg.Chat.ID, replyTo.MessageID); ok && question.ReplyToMessageID != 0 {
+			toDelete = append(toDelete, question.ReplyToMessageID)
 		}
-		askedQuestions.Unlock()
 	}
 
-	bot := form.resources.appEnv.Bot
 	if checker, ok := bot.(base.DeletionRightsChecker); !ok || !checker.CanDeleteMessages(msg.Chat.ID) {
 		return // the dialogue is kept as is: the answers can't be deleted
 	}
 	for _, messageID := range toDelete {
-		selfdestruct.DeleteIf(bot, msg.Chat.ID, messageID, selfDestructionDelayInGroups, nil)
+		selfdestruct.DeleteAfter(bot, msg.Chat.ID, messageID, selfDestructionDelayInGroups)
 	}
 }
 

@@ -16,6 +16,7 @@ Packages
 * [storage](storage) creates a database connection and runs the migrations located in the `db/migrations` directory.
 * [settings](settings) consists of an interface that must provide user settings to the bot.
 * [wizard](wizard) provides facilities to create forms with fields of different types.
+* [selfdestruct](selfdestruct) deletes messages after a delay; the schedule is kept in Redis to survive restarts (see `selfdestruct.Start`).
 * [logconst](logconst) is just a set of constants for use in `log.WithField(logconst.*, ...)`.
 
 Examples of usage
