@@ -222,6 +222,7 @@ func processCallbackQuery(appParams *Params, query *tgbotapi.CallbackQuery) {
 	} else {
 		for _, handler := range appParams.CallbackHandlers {
 			if prefix == handler.GetCallbackPrefix() {
+				metrics.IncCallbackHandlerCounter(handler)
 				handler.Handle(reqenv, query)
 				return
 			}

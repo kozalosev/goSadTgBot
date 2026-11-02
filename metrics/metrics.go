@@ -63,6 +63,18 @@ func IncGuestHandlerCounter(handler base.GuestHandler) {
 	Inc(resolveHandlerName(handler))
 }
 
+// RegisterCallbackHandlerCounters following the scheme: "used_callback_handler_%s".
+func RegisterCallbackHandlerCounters(handlers ...base.CallbackHandler) {
+	for _, h := range handlers {
+		registerCounter(resolveHandlerName(h), "used_callback_handler_")
+	}
+}
+
+// IncCallbackHandlerCounter increments the counter registered for a callback query handler.
+func IncCallbackHandlerCounter(handler base.CallbackHandler) {
+	Inc(resolveHandlerName(handler))
+}
+
 // Inc increments the counter registered as 'name'.
 func Inc(name string) {
 	counter, ok := handlerCounters[handlerName(name)]
