@@ -1,6 +1,7 @@
 package selfdestruct
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -35,4 +36,12 @@ func TestReplaceInline(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, base.FakeInlineMessageID, edit.InlineMessageID)
 	assert.Equal(t, "·", edit.Text)
+}
+
+func TestIsExpectedDeletionFailure(t *testing.T) {
+	assert.True(t, isExpectedDeletionFailure(&tgbotapi.Error{Code: 400, Message: "Bad Request: message can't be deleted"}))
+	assert.True(t, isExpectedDeletionFailure(&tgbotapi.Error{Code: 400, Message: "Bad Request: message to delete not found"}))
+	assert.False(t, isExpectedDeletionFailure(&tgbotapi.Error{Code: 400, Message: "Bad Request: chat not found"}))
+	assert.False(t, isExpectedDeletionFailure(&tgbotapi.Error{Code: 429, Message: "Too Many Requests: retry after 5"}))
+	assert.False(t, isExpectedDeletionFailure(errors.New("dial tcp: connection refused")))
 }

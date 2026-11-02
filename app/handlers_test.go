@@ -8,6 +8,7 @@ import (
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
+	"github.com/kozalosev/goSadTgBot/wizard"
 	"github.com/loctools/go-l10n/loc"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -157,4 +158,22 @@ func TestUpdateKind(t *testing.T) {
 	assert.Equal(t, tgbotapi.UpdateTypeGuestMessage, updateKind(&tgbotapi.Update{GuestMessage: &tgbotapi.Message{}}))
 	assert.Equal(t, tgbotapi.UpdateTypeEditedMessage, updateKind(&tgbotapi.Update{EditedMessage: &tgbotapi.Message{}}))
 	assert.Equal(t, "other", updateKind(&tgbotapi.Update{}))
+}
+
+func TestCanContinueForm(t *testing.T) {
+	const botName = "TestBot"
+	group := tgbotapi.Chat{ID: -100, Type: "supergroup"}
+	private := tgbotapi.Chat{ID: 1, Type: "private"}
+	replyToBot := &tgbotapi.Message{From: &tgbotapi.User{UserName: "testbot"}}
+	replyToUser := &tgbotapi.Message{From: &tgbotapi.User{UserName: "someone"}}
+
+	groupForm := &wizard.Form{ChatID: group.ID}
+	assert.True(t, canContinueForm(groupForm, &tgbotapi.Message{Chat: group, ReplyToMessage: replyToBot}, botName))
+	assert.False(t, canContinueForm(groupForm, &tgbotapi.Message{Chat: group, ReplyToMessage: replyToUser}, botName), "only replies to the bot")
+	assert.False(t, canContinueForm(groupForm, &tgbotapi.Message{Chat: group}, botName), "ordinary messages in the group")
+	assert.False(t, canContinueForm(groupForm, &tgbotapi.Message{Chat: private}, botName), "the form is filled in another chat")
+
+	privateForm := &wizard.Form{ChatID: private.ID}
+	assert.True(t, canContinueForm(privateForm, &tgbotapi.Message{Chat: private}, botName))
+	assert.True(t, canContinueForm(&wizard.Form{}, &tgbotapi.Message{Chat: private}, botName), "a form of an older version")
 }

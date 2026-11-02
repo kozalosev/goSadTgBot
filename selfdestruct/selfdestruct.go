@@ -3,7 +3,11 @@
 package selfdestruct
 
 import (
+	"context"
+	"errors"
 	log "log/slog"
+	"net/http"
+	"strings"
 	"time"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
@@ -31,6 +35,38 @@ func SendAndDelete(bot base.ExtendedBotAPI, msgToSend tgbotapi.MessageConfig, af
 				logconst.FieldError, err)
 		}
 	}()
+}
+
+// DeleteAfter deletes a message of another user after the delay. It returns immediately. The bot needs the right to
+// delete messages in the group for this, so Telegram's refusal is expected and logged at the debug level only;
+// other failures are errors.
+func DeleteAfter(bot base.ExtendedBotAPI, chatID int64, messageID int, after time.Duration) {
+	go func() {
+		time.Sleep(after)
+		err := bot.Request(tgbotapi.NewDeleteMessage(chatID, messageID))
+		if err == nil {
+			return
+		}
+		level := log.LevelError
+		if isExpectedDeletionFailure(err) {
+			level = log.LevelDebug
+		}
+		log.Log(context.Background(), level, "Couldn't delete a message of a user",
+			logconst.FieldFunc, "DeleteAfter",
+			logconst.FieldError, err)
+	}()
+}
+
+// isExpectedDeletionFailure tells if Telegram has refused to delete a message for a reason the bot can't help:
+// it has no right to delete messages of other users in the chat (or the message is older than 48 hours), or the
+// message has already been deleted by its author or an admin.
+func isExpectedDeletionFailure(err error) bool {
+	var apiErr *tgbotapi.Error
+	if !errors.As(err, &apiErr) || apiErr.Code != http.StatusBadRequest {
+		return false
+	}
+	return strings.Contains(apiErr.Message, "message can't be deleted") ||
+		strings.Contains(apiErr.Message, "message to delete not found")
 }
 
 // ReplaceInline replaces the text of an inline message with the placeholder after the delay. It returns immediately.

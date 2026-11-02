@@ -93,3 +93,42 @@ func (i inMemoryStorage) DeleteState(uid int64) error {
 func (i inMemoryStorage) Close() error {
 	return nil
 }
+
+func TestCallbackQueryHandler_Refusals(t *testing.T) {
+	reqenv := &base.RequestEnv{Lang: loc.NewPool("en").GetContext("en")}
+	handler := testHandlerWithAction{actionWasRunFlag: &flagContainer{}}
+	clearRegisteredDescriptors()
+	PopulateWizardDescriptors([]base.MessageHandler{handler})
+
+	userMsg := &tgbotapi.Message{Chat: tgbotapi.Chat{ID: TestID}, MessageID: TestID, From: &tgbotapi.User{ID: TestID}}
+	data := fmt.Sprintf("%s%s:%s", CallbackDataFieldPrefix, TestName, TestValue)
+
+	tests := []struct {
+		name    string
+		message *tgbotapi.Message
+	}{
+		{"button of another chat", &tgbotapi.Message{Chat: tgbotapi.Chat{ID: TestGroupID}, ReplyToMessage: userMsg}},
+		{"inline message", nil},
+		{"original message is deleted", &tgbotapi.Message{Chat: tgbotapi.Chat{ID: TestID}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			storage := inMemoryStorage{storage: make(map[int64]Wizard, 1)}
+			form := NewWizard(handler, 1).(*Form)
+			form.AddEmptyField(TestName, Text)
+			form.ChatID = TestID
+			_ = storage.SaveState(TestID, form)
+			bot := &base.FakeBotAPI{}
+
+			query := &tgbotapi.CallbackQuery{ID: "query", From: userMsg.From, Message: tt.message, Data: data}
+			CallbackQueryHandler(reqenv, query, NewEnv(&base.ApplicationEnv{Bot: bot, Ctx: ctx}, storage))
+
+			output := bot.GetOutput().([]tgbotapi.Chattable)
+			if assert.Len(t, output, 1) {
+				assert.True(t, output[0].(tgbotapi.CallbackConfig).ShowAlert)
+			}
+			_ = storage.GetCurrentState(TestID, form)
+			assert.Nil(t, form.Fields[0].Data, "the form must stay untouched")
+		})
+	}
+}

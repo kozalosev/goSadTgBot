@@ -111,16 +111,17 @@ func (f *Field) askUser(reqenv *base.RequestEnv, msg *tgbotapi.Message) {
 			return btn
 		})
 		f.Form.resources.appEnv.Bot.ReplyWithInlineKeyboard(msg, promptDescription, inlineAnswers)
-	} else if f.descriptor.ReplyKeyboardBuilder != nil {
+	} else if f.descriptor.ReplyKeyboardBuilder != nil && !base.IsGroupChat(&msg.Chat) {
+		// a reply keyboard is shown in private chats only: in groups, it's in the way of other members
 		f.Form.resources.appEnv.Bot.ReplyWithKeyboard(msg, promptDescription, f.descriptor.ReplyKeyboardBuilder(reqenv, msg))
 	} else {
-		f.Form.resources.appEnv.Bot.Reply(msg, promptDescription)
+		f.Form.reply(msg, promptDescription, base.NoOpCustomizer)
 	}
 }
 
 func (f *Field) validate(reqenv *base.RequestEnv, msg *tgbotapi.Message) error {
 	if !f.descriptor.DisableKeyboardValidation {
-		notInReplyKeyboardOptionsIfExists := f.descriptor.ReplyKeyboardBuilder != nil &&
+		notInReplyKeyboardOptionsIfExists := f.descriptor.ReplyKeyboardBuilder != nil && !base.IsGroupChat(&msg.Chat) &&
 			!slices.Contains(f.descriptor.ReplyKeyboardBuilder(reqenv, msg), msg.Text)
 		notInInlineKeyboardOptionsIfExists := len(f.descriptor.InlineKeyboardAnswers) > 0 &&
 			!slices.Contains(f.descriptor.InlineKeyboardAnswers, msg.Text) &&

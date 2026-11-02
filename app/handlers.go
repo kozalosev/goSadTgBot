@@ -159,16 +159,21 @@ func processMessage(appParams *Params, msg *tgbotapi.Message) {
 	// If no handler was chosen, check if this is a parameter for some previously created form.
 	var form wizard.Form
 	err := appParams.StateStorage.GetCurrentState(msg.From.ID, &form)
-	if err == nil {
+	if err == nil && canContinueForm(&form, msg, appenv.Bot.GetName()) {
 		resources := wizard.NewEnv(appenv, appParams.StateStorage)
 		form.PopulateRestored(msg, resources)
 		form.ProcessNextField(reqenv, msg)
 		return
 	}
-	if !errors.Is(err, wizard.ErrNoState) {
+	if err != nil && !errors.Is(err, wizard.ErrNoState) {
 		log.Error("Failed to get a current state",
 			logconst.FieldFunc, "processMessage",
 			logconst.FieldError, err)
+		return
+	}
+
+	// the default message would be noise for other members of a group
+	if base.IsGroupChat(&msg.Chat) {
 		return
 	}
 
@@ -180,6 +185,20 @@ func processMessage(appParams *Params, msg *tgbotapi.Message) {
 		defMsgTr = defaultMessageTr
 	}
 	appenv.Bot.Reply(msg, reqenv.Lang.Tr(defMsgTr))
+}
+
+// canContinueForm tells if the message is an answer to the form: it's sent in the chat where the form is filled, and
+// in group chats, it's a reply to the bot. Otherwise, ordinary messages of the user in a group would be taken as
+// answers if the bot can read all messages there.
+func canContinueForm(form *wizard.Form, msg *tgbotapi.Message, botName string) bool {
+	if !form.BelongsTo(msg.Chat.ID) {
+		return false
+	}
+	if !base.IsGroupChat(&msg.Chat) {
+		return true
+	}
+	replyTo := msg.ReplyToMessage
+	return replyTo != nil && replyTo.From != nil && strings.EqualFold(replyTo.From.UserName, botName)
 }
 
 func processInline(appParams *Params, query *tgbotapi.InlineQuery) {

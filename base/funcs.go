@@ -42,6 +42,11 @@ func NewReplier(appenv *ApplicationEnv, reqenv *RequestEnv, msg *tgbotapi.Messag
 	}
 }
 
+// IsGroupChat tells if the chat is a group or a supergroup.
+func IsGroupChat(chat *tgbotapi.Chat) bool {
+	return chat.IsGroup() || chat.IsSuperGroup()
+}
+
 func NewRequestEnv(langCtx *loc.Context, opts settings.UserOptions) *RequestEnv {
 	return &RequestEnv{
 		Lang:    langCtx,
