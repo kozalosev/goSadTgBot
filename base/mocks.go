@@ -25,8 +25,12 @@ type FakeBotAPI struct {
 	DeletionAllowed bool
 	// RequestError, if set, returns the error for a request made by Request or Send. The request is recorded anyway.
 	RequestError func(c tgbotapi.Chattable) error
+	// FirstSentMessageID, if set, is the identifier of the first message sent by Send; the next ones get the next
+	// identifiers. Otherwise, all the sent messages have 0.
+	FirstSentMessageID int
 
 	mu           sync.Mutex
+	sentCount    int
 	sentMessages []string
 	sentRequests []tgbotapi.Chattable
 	callType     callType
@@ -69,7 +73,14 @@ func (bot *FakeBotAPI) Request(c tgbotapi.Chattable) error {
 }
 
 func (bot *FakeBotAPI) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
-	return tgbotapi.Message{}, bot.record(c)
+	var sent tgbotapi.Message
+	bot.mu.Lock()
+	if bot.FirstSentMessageID != 0 {
+		sent.MessageID = bot.FirstSentMessageID + bot.sentCount
+	}
+	bot.sentCount++
+	bot.mu.Unlock()
+	return sent, bot.record(c)
 }
 
 func (bot *FakeBotAPI) AnswerGuestQuery(c tgbotapi.AnswerGuestQueryConfig) (tgbotapi.SentGuestMessage, error) {
@@ -80,7 +91,7 @@ func (bot *FakeBotAPI) AnswerGuestQuery(c tgbotapi.AnswerGuestQueryConfig) (tgbo
 	return tgbotapi.SentGuestMessage{InlineMessageID: FakeInlineMessageID}, nil
 }
 
-func (bot *FakeBotAPI) CanDeleteMessages(int64) bool {
+func (bot *FakeBotAPI) CanDeleteMessages(ChatID) bool {
 	return bot.DeletionAllowed
 }
 

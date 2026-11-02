@@ -131,10 +131,24 @@ type BotAPI struct {
 	deletionRights   map[int64]deletionRights
 }
 
+// ChatID is the identifier of a chat in Telegram. It's an alias to keep it interchangeable with tgbotapi.
+type ChatID = int64
+
+// MessageID is the identifier of a message in its chat in Telegram. It's an alias to keep it interchangeable with
+// tgbotapi.
+type MessageID = int
+
 // DeletionRightsChecker is implemented by the bots which can tell if they may delete messages of other users in a chat.
 // [BotAPI] implements it; it's a separate interface to keep [ExtendedBotAPI] compatible.
 type DeletionRightsChecker interface {
-	CanDeleteMessages(chatID int64) bool
+	CanDeleteMessages(chatID ChatID) bool
+}
+
+// CanDeleteMessagesOfOthers tells if the bot may delete messages of other users in the chat. It's false for the bots
+// that don't implement [DeletionRightsChecker].
+func CanDeleteMessagesOfOthers(bot ExtendedBotAPI, chatID ChatID) bool {
+	checker, ok := bot.(DeletionRightsChecker)
+	return ok && checker.CanDeleteMessages(chatID)
 }
 
 type deletionRights struct {
