@@ -5,6 +5,7 @@ import (
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
+	"github.com/kozalosev/goSadTgBot/metrics"
 	"github.com/samber/lo"
 )
 
@@ -94,6 +95,7 @@ func PopulateWizardDescriptors(handlers []base.MessageHandler) bool {
 	})
 
 	registeredWizardDescriptors = descriptorsMap
+	metrics.InitWizardCompletedCounters(lo.Keys(descriptorsMap)...)
 	return true
 }
 

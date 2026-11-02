@@ -46,6 +46,31 @@ var (
 	}, []string{"wizard"})
 )
 
+// The Init* functions below create the series for the known label values with zeros. A series of a vector is
+// created lazily by its first increment otherwise, so the dashboards show "No data" instead of 0 and increase()
+// doesn't see the first event, which matters for the alerts on rare events like panics.
+
+// InitUpdateKindCounters creates the series of update_kind_total for the kinds.
+func InitUpdateKindCounters(kinds ...string) {
+	for _, kind := range kinds {
+		updateKindCounter.WithLabelValues(kind)
+	}
+}
+
+// InitPanicsCounters creates the series of panics_total for the kinds.
+func InitPanicsCounters(kinds ...string) {
+	for _, kind := range kinds {
+		panicsCounter.WithLabelValues(kind)
+	}
+}
+
+// InitWizardCompletedCounters creates the series of wizard_completed_total for the wizards.
+func InitWizardCompletedCounters(wizards ...string) {
+	for _, wizard := range wizards {
+		wizardCompletedCounter.WithLabelValues(wizard)
+	}
+}
+
 // IncUpdateCounters counts the update by its kind and the language of its sender.
 func IncUpdateCounters(kind string, sender *tgbotapi.User) {
 	updateKindCounter.WithLabelValues(kind).Inc()

@@ -57,6 +57,19 @@ func warnIfModeDisabled(appParams *Params, enabled bool, mode string) {
 	}
 }
 
+// recoveredUpdateKinds are the kinds of updates handled in goroutines by [HandleUpdate], where a panic is recovered.
+var recoveredUpdateKinds = []string{
+	tgbotapi.UpdateTypeMessage,
+	tgbotapi.UpdateTypeInlineQuery,
+	tgbotapi.UpdateTypeCallbackQuery,
+	tgbotapi.UpdateTypeGuestMessage,
+}
+
+func init() {
+	metrics.InitPanicsCounters(recoveredUpdateKinds...)
+	metrics.InitUpdateKindCounters(append(recoveredUpdateKinds, tgbotapi.UpdateTypeChosenInlineResult)...)
+}
+
 // HandleUpdate is the main router function for processing of [tgbotapi.Update].
 // Every update is processed in its own goroutine. A panic in a handler is recovered, logged and counted
 // by [metrics.IncPanicsCounter] instead of crashing the whole application.
