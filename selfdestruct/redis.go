@@ -17,19 +17,31 @@ const (
 // RedisQueue is a [Queue] in Redis: the tasks survive a restart of the application.
 // The struct holds a single reference, so it's passed by value.
 type RedisQueue struct {
-	rdb *redis.Client
+	rdb        *redis.Client
+	ownsClient bool
 }
 
-// ConnectToRedis connects to Redis and panics if the server is unavailable, like the state storage of the wizards does.
+// ConnectToRedis connects to Redis with a client of its own, which is closed by [RedisQueue.Close], and panics if
+// the server is unavailable, like the state storage of the wizards does. Use [NewRedisQueue] to share a client.
 func ConnectToRedis(ctx context.Context, options *redis.Options) RedisQueue {
 	rdb := redis.NewClient(options)
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		panic(err)
 	}
+	return RedisQueue{rdb: rdb, ownsClient: true}
+}
+
+// NewRedisQueue creates a [RedisQueue] using the client, which is a pool of connections that may be shared with other
+// storages of the application. The client isn't closed by [RedisQueue.Close]: its owner closes it.
+func NewRedisQueue(rdb *redis.Client) RedisQueue {
 	return RedisQueue{rdb: rdb}
 }
 
+// Close closes the client if the queue has created it by itself in [ConnectToRedis].
 func (q RedisQueue) Close() error {
+	if !q.ownsClient {
+		return nil
+	}
 	return q.rdb.Close()
 }
 

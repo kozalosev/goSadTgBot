@@ -33,12 +33,14 @@ type StateStorage interface {
 
 // RedisStateStorage is an implementation of the [StateStorage] interface, using Redis as the storage.
 type RedisStateStorage struct {
-	rdb *redis.Client
-	ttl time.Duration
-	ctx context.Context
+	rdb        *redis.Client
+	ttl        time.Duration
+	ctx        context.Context
+	ownsClient bool
 }
 
-// ConnectToRedis is a constructor of the [RedisStateStorage].
+// ConnectToRedis is a constructor of the [RedisStateStorage] with a client of its own, which is closed by
+// [RedisStateStorage.Close]. Use [NewRedisStateStorage] to share a client with other storages.
 // - ctx is the application context;
 // - ttl is the lifetime of forms; after this duration the command will be cancelled;
 // - options is the connection options.
@@ -48,6 +50,15 @@ func ConnectToRedis(ctx context.Context, ttl time.Duration, options *redis.Optio
 	if status.Err() != nil {
 		panic(status.Err())
 	}
+	storage := NewRedisStateStorage(ctx, rdb, ttl)
+	storage.ownsClient = true
+	return storage
+}
+
+// NewRedisStateStorage creates a [RedisStateStorage] using the client, which is a pool of connections that may be
+// shared with other storages of the application. The client isn't closed by [RedisStateStorage.Close]: its owner
+// closes it.
+func NewRedisStateStorage(ctx context.Context, rdb *redis.Client, ttl time.Duration) RedisStateStorage {
 	return RedisStateStorage{
 		rdb: rdb,
 		ttl: ttl,
@@ -92,7 +103,11 @@ func (rss RedisStateStorage) DeleteState(uid int64) error {
 	}
 }
 
+// Close closes the client if the storage has created it by itself in [ConnectToRedis].
 func (rss RedisStateStorage) Close() error {
+	if !rss.ownsClient {
+		return nil
+	}
 	return rss.rdb.Close()
 }
 

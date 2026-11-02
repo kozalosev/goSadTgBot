@@ -34,6 +34,17 @@ func TestRedisQueue(t *testing.T) {
 	testQueue(t, queue)
 }
 
+func TestNewRedisQueue_SharedClient(t *testing.T) {
+	ctx := context.Background()
+	endpoint, err := redisContainer.Endpoint(ctx, "")
+	require.NoError(t, err)
+	rdb := redis.NewClient(&redis.Options{Addr: endpoint})
+	t.Cleanup(func() { assert.NoError(t, rdb.Close()) })
+
+	assert.NoError(t, NewRedisQueue(rdb).Close())
+	assert.NoError(t, rdb.Ping(ctx).Err(), "the shared client must stay open")
+}
+
 // testQueue checks the contract of the Queue interface.
 func testQueue(t *testing.T, queue Queue) {
 	ctx := context.Background()

@@ -128,3 +128,22 @@ func buildStateStorage(t *testing.T) StateStorage {
 	}
 	return ConnectToRedis(ctx, TestTTL, &redis.Options{Addr: endpoint})
 }
+
+func TestNewRedisStateStorage_SharedClient(t *testing.T) {
+	endpoint, err := container.Endpoint(ctx, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rdb := redis.NewClient(&redis.Options{Addr: endpoint})
+	defer func() {
+		assert.NoError(t, rdb.Close())
+	}()
+
+	stateStorage := NewRedisStateStorage(ctx, rdb, TestTTL)
+	copyOfForm := formExample
+	assert.NoError(t, stateStorage.SaveState(TestID, &copyOfForm))
+	assert.NoError(t, stateStorage.DeleteState(TestID))
+
+	assert.NoError(t, stateStorage.Close())
+	assert.NoError(t, rdb.Ping(ctx).Err(), "the shared client must stay open")
+}
