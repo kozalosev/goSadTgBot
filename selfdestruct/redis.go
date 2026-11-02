@@ -80,6 +80,11 @@ func (q RedisQueue) Take(ctx context.Context, id string) (Task, bool, error) {
 	return task, true, nil
 }
 
+func (q RedisQueue) Len(ctx context.Context) (int, error) {
+	n, err := q.rdb.ZCard(ctx, redisScheduleKey).Result()
+	return int(n), err
+}
+
 func (q RedisQueue) TakeDue(ctx context.Context, now time.Time, limit int) ([]Task, error) {
 	ids, err := q.rdb.ZRangeArgs(ctx, redis.ZRangeArgs{
 		Key:     redisScheduleKey,

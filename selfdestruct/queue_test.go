@@ -56,6 +56,9 @@ func testQueue(t *testing.T, queue Queue) {
 	require.NoError(t, queue.Add(ctx, second, now.Add(-time.Second)))
 	require.NoError(t, queue.Add(ctx, first, now.Add(-2*time.Second)))
 	require.NoError(t, queue.Add(ctx, later, now.Add(time.Hour)))
+	n, err := queue.Len(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 3, n)
 
 	due, err := queue.TakeDue(ctx, now, 1)
 	require.NoError(t, err)

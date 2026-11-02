@@ -23,7 +23,8 @@ const (
 	// DefaultPollInterval is how often the worker started on the first use looks for the tasks whose time has come.
 	DefaultPollInterval = time.Second
 
-	tasksPerPoll          = 100 // also the limit of deleteMessages
+	tasksPerPoll          = 100
+	maxMessagesPerRequest = 100 // the limit of deleteMessages
 	maxConcurrentRequests = 8
 )
 
@@ -69,21 +70,29 @@ func (s *scheduler) run(interval time.Duration) {
 		case <-s.ctx.Done():
 			return
 		case <-ticker.C:
+			lastTickGauge.SetToCurrentTime()
 			s.executeDue()
 		}
 	}
 }
 
 func (s *scheduler) executeDue() {
+	defer recoverPanic("selfdestruct.executeDue")
 	for {
 		tasks, err := s.queue.TakeDue(s.ctx, time.Now(), tasksPerPoll)
 		if err != nil {
+			queueErrorsCounter.WithLabelValues(operationTakeDue).Inc()
 			log.Error("Failed to take the due tasks from the queue",
 				logconst.FieldFunc, "selfdestruct.executeDue",
 				logconst.FieldCalledMethod, "TakeDue",
 				logconst.FieldError, err)
 		}
-		s.executeAll(tasks)
+		batchSizeHistogram.Observe(float64(len(tasks)))
+		if len(tasks) > 0 {
+			start := time.Now()
+			s.executeAll(tasks)
+			batchDurationHistogram.Observe(time.Since(start).Seconds())
+		}
 		if err != nil || len(tasks) < tasksPerPoll {
 			return
 		}
@@ -100,6 +109,7 @@ func (s *scheduler) executeAll(tasks []Task) {
 		semaphore <- struct{}{}
 		wg.Go(func() {
 			defer func() { <-semaphore }()
+			defer recoverPanic("selfdestruct.executeAll")
 			f()
 		})
 	}
@@ -114,25 +124,54 @@ func (s *scheduler) executeAll(tasks []Task) {
 	wg.Wait()
 }
 
-// deleteInChat deletes the messages of one chat by a single request. If Telegram refuses it, the messages are deleted
-// one by one: the documentation doesn't tell what happens if only some of them can't be deleted, and the failures of
-// separate deletions are logged according to their reasons.
+// deleteInChat deletes the messages of one chat by a single request (or a few, if there are more of them than one
+// request takes). If Telegram refuses it, the messages are deleted one by one: the documentation doesn't tell what
+// happens if only some of them can't be deleted, and the failures of separate deletions are logged according to their
+// reasons. If the flood control asks to wait, all the tasks of the chat are postponed: deleting a message again is
+// harmless.
 func (s *scheduler) deleteInChat(chatID int64, tasks []Task) {
-	if len(tasks) == 1 {
-		s.execute(tasks[0])
+	messageIDs := lo.Uniq(lo.FlatMap(tasks, func(task Task, _ int) []int { return task.messageIDs() }))
+	if len(messageIDs) == 1 {
+		s.deleteMessage(chatID, messageIDs[0], tasks...)
 		return
 	}
-	messageIDs := lo.Map(tasks, func(task Task, _ int) int { return task.MessageID })
-	err := s.bot.Request(tgbotapi.NewDeleteMessages(chatID, messageIDs))
-	if err == nil || s.retryLater(err, tasks...) {
+	for _, chunk := range lo.Chunk(messageIDs, maxMessagesPerRequest) {
+		err := s.bot.Request(tgbotapi.NewDeleteMessages(chatID, chunk))
+		if err == nil {
+			countMessages(KindDelete, outcomeDone, len(chunk))
+			continue
+		}
+		if s.retryLater(err, tasks...) {
+			return
+		}
+		bulkFallbackCounter.Inc()
+		log.Info("Couldn't delete the messages at once, deleting them one by one",
+			logconst.FieldFunc, "selfdestruct.deleteInChat",
+			logconst.FieldError, err)
+		for _, messageID := range chunk {
+			s.deleteMessage(chatID, messageID, Task{Kind: KindDelete, ChatID: chatID, MessageID: messageID})
+		}
+	}
+}
+
+// deleteMessage deletes one message; the tasks are postponed if the flood control asks to wait.
+func (s *scheduler) deleteMessage(chatID int64, messageID int, tasks ...Task) {
+	err := s.bot.Request(tgbotapi.NewDeleteMessage(chatID, messageID))
+	if err == nil {
+		countMessages(KindDelete, outcomeDone, 1)
 		return
 	}
-	log.Info("Couldn't delete the messages at once, deleting them one by one",
-		logconst.FieldFunc, "selfdestruct.deleteInChat",
+	if s.retryLater(err, tasks...) {
+		return
+	}
+	level, outcome := log.LevelError, outcomeFailed
+	if isExpectedDeletionFailure(err) {
+		level, outcome = log.LevelDebug, outcomeRefused
+	}
+	countMessages(KindDelete, outcome, 1)
+	log.Log(context.Background(), level, "Couldn't delete a message",
+		logconst.FieldFunc, "selfdestruct.deleteMessage",
 		logconst.FieldError, err)
-	for _, task := range tasks {
-		s.execute(task)
-	}
 }
 
 // retryLater puts the tasks back into the queue if the flood control of Telegram has asked to wait.
@@ -143,7 +182,9 @@ func (s *scheduler) retryLater(err error, tasks ...Task) bool {
 	}
 	at := time.Now().Add(time.Duration(apiErr.RetryAfter) * time.Second)
 	for _, task := range tasks {
+		retriesCounter.WithLabelValues(string(task.Kind)).Inc()
 		if err := s.queue.Add(s.ctx, task, at); err != nil {
+			queueErrorsCounter.WithLabelValues(operationAdd).Inc()
 			log.Error("Failed to postpone a task",
 				logconst.FieldFunc, "selfdestruct.retryLater",
 				logconst.FieldCalledMethod, "Add",
@@ -157,32 +198,29 @@ func (s *scheduler) retryLater(err error, tasks ...Task) bool {
 	return true
 }
 
+// execute executes a task of any kind but a deletion, which is made by deleteInChat.
 func (s *scheduler) execute(task Task) {
 	switch task.Kind {
-	case KindDelete:
-		err := s.bot.Request(tgbotapi.NewDeleteMessage(task.ChatID, task.MessageID))
-		if err == nil || s.retryLater(err, task) {
-			return
-		}
-		level := log.LevelError
-		if isExpectedDeletionFailure(err) {
-			level = log.LevelDebug
-		}
-		log.Log(context.Background(), level, "Couldn't delete a message",
-			logconst.FieldFunc, "selfdestruct.execute",
-			logconst.FieldError, err)
 	case KindReplaceInline:
 		edit := tgbotapi.EditMessageTextConfig{
 			BaseEdit: tgbotapi.BaseEdit{InlineMessageID: task.InlineMessageID},
 			Text:     task.Text,
 		}
-		if err := s.bot.Request(edit); err != nil && !s.retryLater(err, task) {
-			log.Error("Failed to replace an inline message with the placeholder",
-				logconst.FieldFunc, "selfdestruct.execute",
-				"inline_message_id", task.InlineMessageID,
-				logconst.FieldError, err)
+		err := s.bot.Request(edit)
+		if err == nil {
+			countMessages(task.Kind, outcomeDone, 1)
+			return
 		}
+		if s.retryLater(err, task) {
+			return
+		}
+		countMessages(task.Kind, outcomeFailed, 1)
+		log.Error("Failed to replace an inline message with the placeholder",
+			logconst.FieldFunc, "selfdestruct.execute",
+			"inline_message_id", task.InlineMessageID,
+			logconst.FieldError, err)
 	default:
+		countMessages(task.Kind, outcomeFailed, 1)
 		log.Error("Unknown kind of a task",
 			logconst.FieldFunc, "selfdestruct.execute",
 			logconst.FieldValue, task.Kind)
@@ -193,6 +231,7 @@ func (s *scheduler) execute(task Task) {
 func Schedule(bot base.ExtendedBotAPI, task Task, after time.Duration) {
 	s := getScheduler(bot)
 	if err := s.queue.Add(s.ctx, task, time.Now().Add(after)); err != nil {
+		queueErrorsCounter.WithLabelValues(operationAdd).Inc()
 		log.Error("Failed to schedule a task",
 			logconst.FieldFunc, "selfdestruct.Schedule",
 			logconst.FieldCalledMethod, "Add",
@@ -206,6 +245,7 @@ func CancelDeletion(bot base.ExtendedBotAPI, chatID int64, messageID int) (task 
 	s := getScheduler(bot)
 	task, ok, err := s.queue.Take(s.ctx, deletionTaskID(chatID, messageID))
 	if err != nil {
+		queueErrorsCounter.WithLabelValues(operationTake).Inc()
 		log.Error("Failed to cancel a deletion",
 			logconst.FieldFunc, "selfdestruct.CancelDeletion",
 			logconst.FieldCalledMethod, "Take",

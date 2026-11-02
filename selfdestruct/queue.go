@@ -28,6 +28,8 @@ type Task struct {
 	// ReplyToMessageID is the message the deleted message replies to. Telegram doesn't send the replies of the replies,
 	// so the wizard keeps here the command its question was asked in reply to.
 	ReplyToMessageID int `json:"replyToMessageID,omitempty"`
+	// WithMessageIDs are the other messages of the chat deleted together with MessageID, by the same request.
+	WithMessageIDs []int `json:"withMessageIDs,omitempty"`
 }
 
 // ID identifies the task in the queue: there is only one task for a message, and it can be found by the message.
@@ -36,6 +38,11 @@ func (task Task) ID() string {
 		return "inline:" + task.InlineMessageID
 	}
 	return deletionTaskID(task.ChatID, task.MessageID)
+}
+
+// messageIDs returns all the messages a deletion task deletes.
+func (task Task) messageIDs() []int {
+	return append([]int{task.MessageID}, task.WithMessageIDs...)
 }
 
 func deletionTaskID(chatID int64, messageID int) string {
@@ -51,6 +58,8 @@ type Queue interface {
 	Take(ctx context.Context, id string) (task Task, ok bool, err error)
 	// TakeDue removes up to limit tasks whose time has come by now and returns them, the earliest first.
 	TakeDue(ctx context.Context, now time.Time, limit int) ([]Task, error)
+	// Len returns the number of tasks in the queue, due or not.
+	Len(ctx context.Context) (int, error)
 }
 
 // MemoryQueue is a [Queue] in memory: a min-heap by time, so the due tasks are taken from its top without looking
@@ -107,6 +116,12 @@ func (q *MemoryQueue) TakeDue(_ context.Context, now time.Time, limit int) ([]Ta
 		tasks = append(tasks, scheduled.task)
 	}
 	return tasks, nil
+}
+
+func (q *MemoryQueue) Len(context.Context) (int, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return len(q.schedule), nil
 }
 
 // schedule implements [heap.Interface]: the earliest task is at the top.

@@ -38,7 +38,7 @@ var (
 	}, []string{"language"})
 	panicsCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "panics_total",
-		Help: "Count of panics recovered while handling updates, by update kind. Any nonzero rate is a bug",
+		Help: "Count of panics recovered while handling updates, by update kind, and in the background workers, by the name of the worker (self_destruction). Any nonzero rate is a bug",
 	}, []string{"kind"})
 	wizardCompletedCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "wizard_completed_total",

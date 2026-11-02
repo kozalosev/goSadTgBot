@@ -8,6 +8,8 @@ import (
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,6 +82,16 @@ func TestExecuteAll_DeletesByOneRequestPerChat(t *testing.T) {
 	}, requests(bot))
 }
 
+func TestExecuteAll_DeletesTheMessagesOfATaskTogether(t *testing.T) {
+	bot := &base.FakeBotAPI{}
+	newSchedulerForTest(bot).executeAll([]Task{
+		{Kind: KindDelete, ChatID: 1, MessageID: 1, WithMessageIDs: []int{2}},
+		{Kind: KindDelete, ChatID: 1, MessageID: 2}, // the same message is deleted once
+	})
+
+	assert.Equal(t, []tgbotapi.Chattable{tgbotapi.NewDeleteMessages(1, []int{1, 2})}, requests(bot))
+}
+
 func TestExecuteAll_DeletesOneByOneIfRefused(t *testing.T) {
 	bot := &base.FakeBotAPI{RequestError: func(c tgbotapi.Chattable) error {
 		if _, ok := c.(tgbotapi.DeleteMessagesConfig); ok {
@@ -124,6 +136,70 @@ func TestExecuteAll_PostponesByFloodControl(t *testing.T) {
 	require.NoError(t, err)
 	assert.ElementsMatch(t, tasks, due)
 	assert.Len(t, requests(bot), 2, "no deletions one by one after the flood control")
+}
+
+func TestExecuteAll_CountsOutcomes(t *testing.T) {
+	refused := &tgbotapi.Error{Code: 400, Message: "Bad Request: message can't be deleted"}
+	bot := &base.FakeBotAPI{RequestError: func(c tgbotapi.Chattable) error {
+		switch req := c.(type) {
+		case tgbotapi.DeleteMessageConfig:
+			if req.MessageID == 2 {
+				return refused
+			}
+		case tgbotapi.EditMessageTextConfig:
+			return errors.New("dial tcp: connection refused")
+		}
+		return nil
+	}}
+	counter := func(kind TaskKind, outcome string) float64 {
+		return testutil.ToFloat64(messagesCounter.WithLabelValues(string(kind), outcome))
+	}
+	done, refusedBefore, failed := counter(KindDelete, outcomeDone), counter(KindDelete, outcomeRefused), counter(KindReplaceInline, outcomeFailed)
+
+	newSchedulerForTest(bot).executeAll([]Task{
+		{Kind: KindDelete, ChatID: 1, MessageID: 1},
+		{Kind: KindDelete, ChatID: 2, MessageID: 2},
+		{Kind: KindReplaceInline, InlineMessageID: "inline", Text: "·"},
+	})
+
+	assert.Equal(t, done+1, counter(KindDelete, outcomeDone))
+	assert.Equal(t, refusedBefore+1, counter(KindDelete, outcomeRefused))
+	assert.Equal(t, failed+1, counter(KindReplaceInline, outcomeFailed))
+}
+
+func TestExecuteAll_RecoversFromPanic(t *testing.T) {
+	bot := &base.FakeBotAPI{RequestError: func(tgbotapi.Chattable) error { panic("boom") }}
+	panics := func() float64 { return panicsOfWorker(t) }
+	before := panics()
+
+	assert.NotPanics(t, func() {
+		newSchedulerForTest(bot).executeAll([]Task{
+			{Kind: KindDelete, ChatID: 1, MessageID: 1},
+			{Kind: KindDelete, ChatID: 2, MessageID: 2},
+		})
+	})
+	assert.Equal(t, before+2, panics())
+}
+
+// panicsOfWorker reads panics_total{kind="self_destruction"} from the default registry, where the metrics package
+// registers it.
+func panicsOfWorker(t *testing.T) float64 {
+	families, err := prometheus.DefaultGatherer.Gather()
+	require.NoError(t, err)
+	for _, family := range families {
+		if family.GetName() != "panics_total" {
+			continue
+		}
+		for _, metric := range family.GetMetric() {
+			for _, label := range metric.GetLabel() {
+				if label.GetName() == "kind" && label.GetValue() == panicKind {
+					return metric.GetCounter().GetValue()
+				}
+			}
+		}
+	}
+	t.Fatal("panics_total of the worker isn't registered")
+	return 0
 }
 
 func TestIsExpectedDeletionFailure(t *testing.T) {
