@@ -10,13 +10,12 @@ import (
 	"github.com/kozalosev/goSadTgBot/selfdestruct"
 )
 
-// The cleanup of group chats after the wizards:
-//   - a question answered in a chat where the bot may delete messages of other users is deleted the delay after the
-//     answer, together with the answer and the message the question was asked in reply to (the command or the previous
-//     answer);
-//   - if the bot may not delete messages of other users, an answered question is kept: the answer would be left alone
-//     otherwise;
-//   - a question nobody has answered is deleted when the form expires, whatever the rights of the bot are.
+// The cleanup of group chats after the wizards, only where the bot may delete messages of other users (elsewhere,
+// nothing is deleted, so that the messages of the users aren't left alone):
+//   - an answered question is deleted the delay after the answer, together with the answer and the message
+//     the question was asked in reply to (the command or the previous answer);
+//   - a question nobody has answered is deleted when the form expires, together with the message it was asked in reply
+//     to.
 //
 // A question is scheduled for deletion as unanswered right after it's asked, and the answer cancels that deletion. The
 // schedule is kept by the selfdestruct package, so it survives a restart if the package is started with a Redis queue.
@@ -43,7 +42,7 @@ func SetUnansweredQuestionLifetimeInGroups(lifetime time.Duration) {
 func (form *Form) reply(msg *tgbotapi.Message, text string, customizer base.MessageCustomizer) {
 	customizer = replyCustomizer(msg, customizer)
 	bot := form.resources.appEnv.Bot
-	if !shouldSelfDestruct(msg) {
+	if !shouldSelfDestruct(msg) || !canDeleteMessagesOfOthers(bot, msg.Chat.ID) {
 		bot.ReplyWithMessageCustomizer(msg, text, customizer)
 		return
 	}
@@ -61,12 +60,14 @@ func (form *Form) reply(msg *tgbotapi.Message, text string, customizer base.Mess
 		return
 	}
 
-	// deleted as unanswered unless handleAnswer cancels it
+	// deleted as unanswered unless handleAnswer cancels it, together with the message it was asked in reply to (the
+	// command or the previous answer), so that no tail is left
 	selfdestruct.Schedule(bot, selfdestruct.Task{
 		Kind:             selfdestruct.KindDelete,
 		ChatID:           msg.Chat.ID,
 		MessageID:        sent.MessageID,
 		ReplyToMessageID: msg.MessageID,
+		WithMessageIDs:   []int{msg.MessageID},
 	}, unansweredQuestionLifetime())
 }
 
@@ -86,12 +87,17 @@ func (form *Form) handleAnswer(msg *tgbotapi.Message) {
 		}
 	}
 
-	if checker, ok := bot.(base.DeletionRightsChecker); !ok || !checker.CanDeleteMessages(msg.Chat.ID) {
+	if !canDeleteMessagesOfOthers(bot, msg.Chat.ID) {
 		return // the dialogue is kept as is: the answers can't be deleted
 	}
 	for _, messageID := range toDelete {
 		selfdestruct.DeleteAfter(bot, msg.Chat.ID, messageID, selfDestructionDelayInGroups)
 	}
+}
+
+func canDeleteMessagesOfOthers(bot base.ExtendedBotAPI, chatID int64) bool {
+	checker, ok := bot.(base.DeletionRightsChecker)
+	return ok && checker.CanDeleteMessages(chatID)
 }
 
 func unansweredQuestionLifetime() time.Duration {

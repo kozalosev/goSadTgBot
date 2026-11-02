@@ -78,7 +78,7 @@ func TestForm_ProcessNextField_InGroup(t *testing.T) {
 	wizard.AddEmptyField(TestName2, Text)
 	wizard.AddEmptyField(TestName3, Text)
 	form := wizard.(*Form)
-	bot := &base.FakeBotAPI{}
+	bot := &base.FakeBotAPI{DeletionAllowed: true}
 	form.resources = NewEnv(&base.ApplicationEnv{Bot: bot, Ctx: ctx}, FakeStorage{})
 
 	form.ProcessNextField(reqenv, newGroupMessage("/command"))
@@ -132,12 +132,19 @@ func newAnswer() *tgbotapi.Message {
 	return answer
 }
 
-func TestCleanup_UnansweredQuestionIsDeleted(t *testing.T) {
+func TestCleanup_UnansweredWithoutRightsIsKept(t *testing.T) {
 	form, bot := newGroupFormForCleanup(t, false)
 	form.reply(newGroupMessage("/command"), TestPromptDesc, base.NoOpCustomizer)
 
-	assert.Eventually(t, func() bool { return len(deletedMessages(bot)) == 1 }, time.Second, 5*time.Millisecond)
-	assert.Equal(t, []int{0}, deletedMessages(bot))
+	assert.Never(t, func() bool { return len(deletedMessages(bot)) > 0 }, 100*time.Millisecond, 5*time.Millisecond)
+}
+
+func TestCleanup_UnansweredWithRightsIsDeletedWithCommand(t *testing.T) {
+	form, bot := newGroupFormForCleanup(t, true)
+	form.reply(newGroupMessage("/command"), TestPromptDesc, base.NoOpCustomizer)
+
+	assert.Eventually(t, func() bool { return len(deletedMessages(bot)) == 2 }, time.Second, 5*time.Millisecond)
+	assert.ElementsMatch(t, []int{0, TestID}, deletedMessages(bot))
 }
 
 func TestCleanup_AnsweredWithoutRightsIsKept(t *testing.T) {
