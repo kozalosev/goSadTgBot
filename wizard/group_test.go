@@ -114,8 +114,11 @@ func deletedMessages(bot *base.FakeBotAPI) []int {
 	requests, _ := bot.GetOutput().([]tgbotapi.Chattable)
 	var ids []int
 	for _, req := range requests {
-		if deletion, ok := req.(tgbotapi.DeleteMessageConfig); ok {
+		switch deletion := req.(type) {
+		case tgbotapi.DeleteMessageConfig:
 			ids = append(ids, deletion.MessageID)
+		case tgbotapi.DeleteMessagesConfig:
+			ids = append(ids, deletion.MessageIDs...)
 		}
 	}
 	return ids

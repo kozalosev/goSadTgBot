@@ -16,13 +16,15 @@ import (
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 	"github.com/kozalosev/goSadTgBot/base"
 	"github.com/kozalosev/goSadTgBot/logconst"
+	"github.com/samber/lo"
 )
 
 const (
 	// DefaultPollInterval is how often the worker started on the first use looks for the tasks whose time has come.
 	DefaultPollInterval = time.Second
 
-	tasksPerPoll = 100
+	tasksPerPoll          = 100 // also the limit of deleteMessages
+	maxConcurrentRequests = 8
 )
 
 var (
@@ -81,20 +83,85 @@ func (s *scheduler) executeDue() {
 				logconst.FieldCalledMethod, "TakeDue",
 				logconst.FieldError, err)
 		}
-		for _, task := range tasks {
-			s.execute(task)
-		}
+		s.executeAll(tasks)
 		if err != nil || len(tasks) < tasksPerPoll {
 			return
 		}
 	}
 }
 
+// executeAll executes the tasks concurrently, up to maxConcurrentRequests requests at once, and returns when all of
+// them are done. The messages of a chat are deleted by one request and not concurrently, since the flood control of
+// Telegram limits the requests per chat.
+func (s *scheduler) executeAll(tasks []Task) {
+	var wg sync.WaitGroup
+	semaphore := make(chan struct{}, maxConcurrentRequests)
+	goLimited := func(f func()) {
+		semaphore <- struct{}{}
+		wg.Go(func() {
+			defer func() { <-semaphore }()
+			f()
+		})
+	}
+
+	deletions, others := lo.FilterReject(tasks, func(task Task, _ int) bool { return task.Kind == KindDelete })
+	for chatID, chatDeletions := range lo.GroupBy(deletions, func(task Task) int64 { return task.ChatID }) {
+		goLimited(func() { s.deleteInChat(chatID, chatDeletions) })
+	}
+	for _, task := range others {
+		goLimited(func() { s.execute(task) })
+	}
+	wg.Wait()
+}
+
+// deleteInChat deletes the messages of one chat by a single request. If Telegram refuses it, the messages are deleted
+// one by one: the documentation doesn't tell what happens if only some of them can't be deleted, and the failures of
+// separate deletions are logged according to their reasons.
+func (s *scheduler) deleteInChat(chatID int64, tasks []Task) {
+	if len(tasks) == 1 {
+		s.execute(tasks[0])
+		return
+	}
+	messageIDs := lo.Map(tasks, func(task Task, _ int) int { return task.MessageID })
+	err := s.bot.Request(tgbotapi.NewDeleteMessages(chatID, messageIDs))
+	if err == nil || s.retryLater(err, tasks...) {
+		return
+	}
+	log.Info("Couldn't delete the messages at once, deleting them one by one",
+		logconst.FieldFunc, "selfdestruct.deleteInChat",
+		logconst.FieldError, err)
+	for _, task := range tasks {
+		s.execute(task)
+	}
+}
+
+// retryLater puts the tasks back into the queue if the flood control of Telegram has asked to wait.
+func (s *scheduler) retryLater(err error, tasks ...Task) bool {
+	var apiErr *tgbotapi.Error
+	if !errors.As(err, &apiErr) || apiErr.RetryAfter <= 0 {
+		return false
+	}
+	at := time.Now().Add(time.Duration(apiErr.RetryAfter) * time.Second)
+	for _, task := range tasks {
+		if err := s.queue.Add(s.ctx, task, at); err != nil {
+			log.Error("Failed to postpone a task",
+				logconst.FieldFunc, "selfdestruct.retryLater",
+				logconst.FieldCalledMethod, "Add",
+				logconst.FieldError, err)
+		}
+	}
+	log.Warn("The tasks are postponed by the flood control of Telegram",
+		logconst.FieldFunc, "selfdestruct.retryLater",
+		"retry_after", apiErr.RetryAfter,
+		"tasks", len(tasks))
+	return true
+}
+
 func (s *scheduler) execute(task Task) {
 	switch task.Kind {
 	case KindDelete:
 		err := s.bot.Request(tgbotapi.NewDeleteMessage(task.ChatID, task.MessageID))
-		if err == nil {
+		if err == nil || s.retryLater(err, task) {
 			return
 		}
 		level := log.LevelError
@@ -109,7 +176,7 @@ func (s *scheduler) execute(task Task) {
 			BaseEdit: tgbotapi.BaseEdit{InlineMessageID: task.InlineMessageID},
 			Text:     task.Text,
 		}
-		if err := s.bot.Request(edit); err != nil {
+		if err := s.bot.Request(edit); err != nil && !s.retryLater(err, task) {
 			log.Error("Failed to replace an inline message with the placeholder",
 				logconst.FieldFunc, "selfdestruct.execute",
 				"inline_message_id", task.InlineMessageID,
