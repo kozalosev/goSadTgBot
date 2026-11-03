@@ -20,10 +20,12 @@ const (
 
 // Form is an implementation of the [Wizard] interface.
 type Form struct {
-	Fields     Fields `json:"fields"`
-	Index      int    `json:"index"`            // index of the current field
-	WizardType string `json:"wizardType"`       // name of the form
-	ChatID     int64  `json:"chatID,omitempty"` // chat where the form is filled; 0 for the states saved by older versions
+	Fields     Fields      `json:"fields"`
+	Index      int         `json:"index"`            // index of the current field
+	WizardType string      `json:"wizardType"`       // name of the form
+	ChatID     base.ChatID `json:"chatID,omitempty"` // chat where the form is filled; 0 for the states saved by older versions
+	// Dialogue keeps the messages of the form in a group chat to clean them up.
+	Dialogue dialogue `json:"dialogue,omitzero"`
 
 	resources  *Env
 	descriptor *FormDescriptor
@@ -78,6 +80,7 @@ func (form *Form) ProcessNextField(reqenv *base.RequestEnv, msg *tgbotapi.Messag
 	maxIndex := len(form.Fields) - 1
 start:
 	if form.Index > maxIndex {
+		form.completeDialogue(reqenv, msg)
 		form.doAction(reqenv, msg)
 		return
 	}
@@ -93,11 +96,13 @@ start:
 		form.handleAnswer(msg)
 		if value == nil {
 			text := reqenv.Lang.Tr(InvalidFieldValueTypeErrorTr) + reqenv.Lang.Tr(string(currentField.Type))
-			form.reply(msg, text, base.NoOpCustomizer)
+			form.reply(reqenv, msg, text, base.NoOpCustomizer)
+			form.saveState(msg) // with the dialogue
 			return
 		} else if err := currentField.validate(reqenv, msg); err != nil {
 			text := reqenv.Lang.Tr(InvalidFieldValueErrorTr) + reqenv.Lang.Tr(err.Error())
-			form.reply(msg, text, base.MarkdownCustomizer)
+			form.reply(reqenv, msg, text, base.MarkdownCustomizer)
+			form.saveState(msg) // with the dialogue
 			return
 		}
 		currentField.Data = value
@@ -107,11 +112,14 @@ start:
 	currentField.askUser(reqenv, msg)
 	currentField.WasRequested = true
 	form.ChatID = msg.Chat.ID
+	form.saveState(msg)
+}
 
+func (form *Form) saveState(msg *tgbotapi.Message) {
 	if err := form.resources.stateStorage.SaveState(msg.From.ID, form); err != nil {
 		log.Error("Failed to save the state of a wizard",
 			logconst.FieldObject, "Form",
-			logconst.FieldMethod, "ProcessNextField",
+			logconst.FieldMethod, "saveState",
 			logconst.FieldCalledObject, "StateStorage",
 			logconst.FieldCalledMethod, "SaveState",
 			logconst.FieldError, err)
@@ -129,7 +137,7 @@ func (form *Form) doAction(reqenv *base.RequestEnv, msg *tgbotapi.Message) {
 
 // BelongsTo tells if the form may be continued by a message from the chat. The forms saved before the chat was
 // stored belong to any chat.
-func (form *Form) BelongsTo(chatID int64) bool {
+func (form *Form) BelongsTo(chatID base.ChatID) bool {
 	return form.ChatID == 0 || form.ChatID == chatID
 }
 

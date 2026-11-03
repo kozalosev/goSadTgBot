@@ -169,7 +169,7 @@ const deletionRightsTTL = 10 * time.Minute
 
 // CanDeleteMessages tells if the bot may delete messages of other users in the chat: it's the creator, or an
 // administrator with the can_delete_messages right. The result is cached for some time. A failed request means no.
-func (bot *BotAPI) CanDeleteMessages(chatID int64) bool {
+func (bot *BotAPI) CanDeleteMessages(chatID ChatID) bool {
 	bot.deletionRightsMu.Lock()
 	defer bot.deletionRightsMu.Unlock()
 	if rights, ok := bot.deletionRights[chatID]; ok && time.Since(rights.checkedAt) < deletionRightsTTL {
